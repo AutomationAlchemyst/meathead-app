@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -17,7 +16,7 @@ interface AuthContextType {
   loading: boolean; 
   authCheckCompleted: boolean; 
   isAdmin: boolean;
-  isPremium: boolean; // Added for premium status
+  isPremium: boolean;
   setUserProfile: (profile: UserProfile | null) => void;
 }
 
@@ -27,7 +26,7 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   authCheckCompleted: false,
   isAdmin: false,
-  isPremium: false, // Default to false
+  isPremium: false,
   setUserProfile: () => {},
 });
 
@@ -41,40 +40,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoadingState] = useState(true);
   const [authCheckCompleted, setAuthCheckCompletedState] = useState(false);
   const [isAdmin, setIsAdminState] = useState(false); 
-  const [isPremium, setIsPremiumState] = useState(false); // State for premium status
+  const [isPremium, setIsPremiumState] = useState(false);
 
   const setUser = (newUser: FirebaseUser | null) => {
-    console.log('[AuthContext] setUser called. New user UID:', newUser?.uid);
     setUserState(newUser);
   };
 
   const handleSetUserProfile = (newProfile: UserProfile | null) => {
-    console.log('[AuthContext] handleSetUserProfile called. Full new profile being set to state:', JSON.stringify(newProfile, (key, value) => {
-      if (value instanceof Timestamp) return `Timestamp(${value.toDate().toISOString()})`;
-      if (key === 'activeWorkoutPlan' && value) return `WorkoutPlan(${ (value as GenerateWorkoutPlanOutput).planName })`; 
-      return value;
-    }, 2));
     setUserProfileState(newProfile ? { ...newProfile } : null);
     setIsAdminState(newProfile?.isAdmin ?? false);
-    setIsPremiumState(newProfile?.isPremium ?? false); // Update isPremium state
+    setIsPremiumState(newProfile?.isPremium ?? false);
   };
   
   const setLoading = (newLoading: boolean) => {
-    console.log('[AuthContext] setLoading called. New loading state:', newLoading);
     setLoadingState(newLoading);
   }
 
   const setAuthCheckCompleted = (newAuthCheckCompleted: boolean) => {
-    console.log('[AuthContext] setAuthCheckCompleted called. New authCheckCompleted state:', newAuthCheckCompleted);
     setAuthCheckCompletedState(newAuthCheckCompleted);
   }
 
 
   useEffect(() => {
-    console.log('[AuthContext] useEffect: Setting up onAuthStateChanged listener.');
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log('[AuthContext] onAuthStateChanged: Triggered. Firebase user UID:', firebaseUser?.uid || 'null');
-
       if (firebaseUser) {
         setUser(firebaseUser);
       } else {
@@ -82,15 +70,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         handleSetUserProfile(null); 
       }
       
-      console.log(`[AuthContext] onAuthStateChanged: User state set. UID: ${firebaseUser?.uid}. AuthCheckCompleted (before update): ${authCheckCompleted}`);
       if (!authCheckCompleted) {
         setAuthCheckCompleted(true);
-        console.log(`[AuthContext] onAuthStateChanged: AuthCheckCompleted set to true.`);
       }
     });
 
     return () => {
-      console.log('[AuthContext] useEffect: Cleaning up onAuthStateChanged listener.');
       unsubscribeAuth();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -100,21 +85,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     let unsubscribeProfile: (() => void) | undefined;
 
     if (user) {
-      console.log(`[AuthContext] User changed or detected (UID: ${user.uid}). Setting up profile listener. Current loading state (before setting true): ${loading}. AuthCheckCompleted: ${authCheckCompleted}`);
       setLoading(true); 
       
       const userDocRef = doc(db, 'users', user.uid);
-      console.log(`[AuthContext] Subscribing to snapshot for users/${user.uid}`);
       
       unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-        console.log(`[AuthContext] Firestore snapshot received for users/${user.uid}. Exists: ${docSnap.exists()}`);
         const rawData = docSnap.data();
-        const loggableRawData = {...rawData};
-        if (loggableRawData.activeWorkoutPlan) {
-            loggableRawData.activeWorkoutPlan = `WorkoutPlan(${loggableRawData.activeWorkoutPlan.planName || 'Unnamed Plan'})`;
-        }
-        console.log(`[AuthContext] Raw data from snapshot for users/${user.uid}:`, JSON.stringify(loggableRawData, (key, value) => value instanceof Timestamp ? `Timestamp(${value.toDate().toISOString()})` : value, 2));
-
 
         if (docSnap.exists() && rawData) {
           const convertTimestamp = (tsField: any): Timestamp | null => {
@@ -152,21 +128,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
             journeyStartDate: convertTimestamp(rawData.journeyStartDate),
             activeWorkoutPlan: rawData.activeWorkoutPlan ? (rawData.activeWorkoutPlan as GenerateWorkoutPlanOutput) : null, 
             isAdmin: typeof rawData.isAdmin === 'boolean' ? rawData.isAdmin : false,
-            isPremium: typeof rawData.isPremium === 'boolean' ? rawData.isPremium : false, // Process isPremium
+            isPremium: typeof rawData.isPremium === 'boolean' ? rawData.isPremium : false,
+
+            // --- THE FIX ---
+            // We are now telling our central data manager to look for and include
+            // our new streak data in the user's profile.
+            currentStreak: typeof rawData.currentStreak === 'number' ? rawData.currentStreak : 0,
+            lastLogDate: convertTimestamp(rawData.lastLogDate),
           };
 
           handleSetUserProfile(processedProfile);
-          console.log(`[AuthContext] Profile listener: Profile processed and set for UID: ${user.uid}. isAdmin: ${processedProfile.isAdmin}, isPremium: ${processedProfile.isPremium}`);
 
         } else {
           handleSetUserProfile(null);
-          if (!docSnap.exists()) {
-            console.warn(`[AuthContext] Profile listener: User profile document NOT FOUND in Firestore for authed user UID: ${user.uid}.`);
-          } else { 
-            console.warn(`[AuthContext] Profile listener: User profile document exists for UID ${user.uid}, but rawData is unexpectedly falsy.`);
-          }
         }
-        console.log(`[AuthContext] Profile listener: Setting loading to false. User UID: ${user.uid}`);
         setLoading(false);
       }, (error) => {
         console.error("[AuthContext] Profile listener: Error fetching user profile:", error);
@@ -174,7 +149,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setLoading(false);
       });
     } else { 
-      console.log('[AuthContext] No user. Clearing profile and setting loading to false (if auth check completed). Tearing down listener if active.');
       handleSetUserProfile(null);
       if (unsubscribeProfile) {
         unsubscribeProfile();
@@ -186,7 +160,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     return () => {
       if (unsubscribeProfile) {
-        console.log('[AuthContext] Cleaning up profile listener.');
         unsubscribeProfile();
       }
     };
@@ -195,21 +168,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 
   const contextValue = { user, userProfile, loading, authCheckCompleted, isAdmin, isPremium, setUserProfile: handleSetUserProfile };
-   console.log('[AuthContext] PROVIDING VALUE:', {
-    userId: user?.uid || 'undefined',
-    loading,
-    authCheckCompleted,
-    isAdmin: isAdmin,
-    isPremium: isPremium,
-    profileExists: !!userProfile,
-    profileCurrentWeight: userProfile?.currentWeight,
-    profileTargetCalories: userProfile?.targetCalories,
-    profileTargetProtein: userProfile?.targetProtein,
-    profileTargetCarbs: userProfile?.targetCarbs,
-    profileTargetFat: userProfile?.targetFat,
-    profileTargetWater: userProfile?.targetWaterIntake, 
-    activeWorkoutPlanName: userProfile?.activeWorkoutPlan?.planName,
-  });
 
   return (
     <AuthContext.Provider value={contextValue}>
@@ -217,4 +175,3 @@ export function AuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   );
 }
-    
