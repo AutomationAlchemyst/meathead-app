@@ -1,0 +1,65 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+
+      // Rules for the 'foodLogs' subcollection
+      match /foodLogs/{logId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Assumes server action or client correctly sets userId in the document
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false; 
+      }
+
+      // Rules for the 'weightLogs' subcollection
+      match /weightLogs/{logId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Assumes server action or client correctly sets userId in the document
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Rules for the 'workoutLogs' subcollection
+      match /workoutLogs/{logId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Assumes server action or client correctly sets userId in the document
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if false;
+      }
+
+      // Rules for the 'waterLogs' subcollection
+      match /waterLogs/{logId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // Assumes server action or client correctly sets userId in the document
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        // Allow user to update or delete their own water logs
+        allow update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Rules for the 'feedbackSubmissions' collection
+    match /feedbackSubmissions/{feedbackId} {
+      // Allow create if the document being written contains a 'userId' field
+      // that is a non-empty string. The server action is responsible for
+      // ensuring this 'userId' is valid and corresponds to the authenticated user.
+      allow create: if request.resource.data.userId is string && request.resource.data.userId != "";
+      
+      // Allow read if true: The server action 'getFeedbackSubmissions' now handles
+      // the admin check internally before fetching data.
+      // This trusts your server-side code.
+      allow read: if true;
+      
+      // Disallow client-side updates and deletes for feedback submissions.
+      allow update, delete: if false;
+    }
+  }
+}

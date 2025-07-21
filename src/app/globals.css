@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: var(--font-inter), Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 219 93% 95%; /* Light Blue */
+    --foreground: 210 10% 23%; /* Dark Slate Gray */
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 210 10% 23%; /* Dark Slate Gray */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 210 10% 23%; /* Dark Slate Gray */
+    --primary: 217 90% 61%; /* Saturated Blue */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 217 90% 80%; /* Lighter Blue */
+    --secondary-foreground: 217 90% 30%; /* Darker Blue for contrast */
+    --muted: 210 30% 90%; /* Light Gray */
+    --muted-foreground: 210 10% 45%; /* Medium Gray */
+    --accent: 260 82% 78%; /* Purple */
+    --accent-foreground: 0 0% 100%; /* White */
+    --destructive: 0 84.2% 60.2%; /* Default Red */
+    --destructive-foreground: 0 0% 98%; /* White */
+    --border: 210 20% 85%; /* Light Gray Border */
+    --input: 210 20% 96%; /* Off-White Input Background */
+    --ring: 217 90% 61%; /* Saturated Blue for focus rings */
+    --chart-1: 217 90% 61%; /* Primary Blue */
+    --chart-2: 260 82% 78%; /* Accent Purple */
+    --chart-3: 160 70% 45%; /* Teal/Green */
+    --chart-4: 40 90% 55%;  /* Orange/Yellow */
+    --chart-5: 280 70% 55%; /* Darker Purple/Magenta */
+    --radius: 0.5rem;
+    /* Sidebar variables adjusted to match the new light theme */
+    --sidebar-background: 217 90% 90%; /* Light Primary Shade */
+    --sidebar-foreground: 210 10% 23%; /* Dark Slate Gray */
+    --sidebar-primary: 217 90% 61%; /* Saturated Blue */
+    --sidebar-primary-foreground: 0 0% 100%; /* White */
+    --sidebar-accent: 217 90% 80%; /* Lighter Blue (for hover) */
+    --sidebar-accent-foreground: 217 90% 30%; /* Darker Blue (text on hover) */
+    --sidebar-border: 210 20% 80%; /* Slightly Darker Border */
+    --sidebar-ring: 217 90% 61%; /* Saturated Blue */
+  }
+
+  .dark {
+    /* For dark mode, we can invert or use a different dark theme.
+       Let's create a darker version of the PRD's blue theme.
+       This is an example, can be refined.
+    */
+    --background: 220 30% 10%; /* Dark Blue-Gray */
+    --foreground: 210 20% 90%; /* Light Gray */
+    --card: 220 30% 15%; /* Slightly lighter Dark Blue-Gray */
+    --card-foreground: 210 20% 90%;
+    --popover: 220 30% 15%;
+    --popover-foreground: 210 20% 90%;
+    --primary: 217 90% 61%; /* Saturated Blue (can remain bright) */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 80% 50%; /* Slightly darker/muted blue */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 30% 20%; /* Darker Muted */
+    --muted-foreground: 210 20% 65%;
+    --accent: 260 82% 78%; /* Purple (can remain bright) */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 30% 25%;
+    --input: 220 30% 18%;
+    --ring: 217 90% 61%;
+    --chart-1: 217 90% 61%;
+    --chart-2: 260 82% 78%;
+    --chart-3: 160 60% 65%; /* Lighter Teal for dark */
+    --chart-4: 40 80% 65%;  /* Lighter Orange for dark */
+    --chart-5: 280 60% 65%; /* Lighter Magenta for dark */
+    --sidebar-background: 220 30% 12%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 217 90% 61%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 80% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 30% 25%;
+    --sidebar-ring: 217 90% 61%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
