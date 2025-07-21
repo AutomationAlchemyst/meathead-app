@@ -1,9 +1,11 @@
-
 'use server';
 
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+// --- IMPROVEMENT ---
+// We've removed the unused imports related to the old streak function.
 import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import type { UserProfile, ActivityLevel } from '@/types'; // Added ActivityLevel
+
+import type { UserProfile, ActivityLevel } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
@@ -17,9 +19,9 @@ const UserProfileUpdateSchema = z.object({
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().positive("Target weight must be a positive number.").optional().nullable()
   ),
-  activityLevel: z.enum(['sedentary', 'lightlyActive', 'active', 'veryActive'] as [ActivityLevel, ...ActivityLevel[]]).optional().nullable(),
+  activityLevel: z.enum(['sedentary', 'light', 'moderate', 'very'] as [ActivityLevel, ...ActivityLevel[]]).optional().nullable(),
   targetCalories: z.preprocess(
-    (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)), // Allow empty string to mean clear/nullify
+    (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().int().min(0, "Calories must be a non-negative integer.").optional().nullable()
   ),
   targetProtein: z.preprocess(
@@ -34,7 +36,7 @@ const UserProfileUpdateSchema = z.object({
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().int().min(0, "Fat must be a non-negative integer.").optional().nullable()
   ),
-  targetWaterIntake: z.preprocess( // Added
+  targetWaterIntake: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().int().min(0, "Water intake must be a non-negative integer.").optional().nullable()
   ),
@@ -62,7 +64,6 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 
   const rawData = Object.fromEntries(formData);
-  // Handle empty strings for number fields to treat them as 'clear this value' -> null
   const processedData = { ...rawData };
   ['currentWeight', 'targetWeight', 'targetCalories', 'targetProtein', 'targetCarbs', 'targetFat', 'targetWaterIntake'].forEach(key => {
     if (processedData[key] === '') {
@@ -78,18 +79,15 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
   
   const dataToUpdate: Partial<UserProfile> = {};
-  // Explicitly check for undefined to allow nulls to be set (clearing a value)
   if (parsedData.data.displayName !== undefined) dataToUpdate.displayName = parsedData.data.displayName === '' ? null : parsedData.data.displayName;
   if (parsedData.data.currentWeight !== undefined) dataToUpdate.currentWeight = parsedData.data.currentWeight;
   if (parsedData.data.targetWeight !== undefined) dataToUpdate.targetWeight = parsedData.data.targetWeight;
   if (parsedData.data.activityLevel !== undefined) dataToUpdate.activityLevel = parsedData.data.activityLevel;
-  
   if (parsedData.data.targetCalories !== undefined) dataToUpdate.targetCalories = parsedData.data.targetCalories;
   if (parsedData.data.targetProtein !== undefined) dataToUpdate.targetProtein = parsedData.data.targetProtein;
   if (parsedData.data.targetCarbs !== undefined) dataToUpdate.targetCarbs = parsedData.data.targetCarbs;
   if (parsedData.data.targetFat !== undefined) dataToUpdate.targetFat = parsedData.data.targetFat;
-  if (parsedData.data.targetWaterIntake !== undefined) dataToUpdate.targetWaterIntake = parsedData.data.targetWaterIntake; // Added
-  
+  if (parsedData.data.targetWaterIntake !== undefined) dataToUpdate.targetWaterIntake = parsedData.data.targetWaterIntake;
 
   if (Object.keys(dataToUpdate).length === 0) {
     return { error: "No changes to update."};
@@ -99,10 +97,14 @@ export async function updateUserProfile(userId: string, formData: FormData) {
     const userDocRef = doc(db, 'users', userId);
     await updateDoc(userDocRef, { ...dataToUpdate, updatedAt: serverTimestamp() });
     revalidatePath('/profile');
-    revalidatePath('/dashboard'); // Revalidate dashboard to reflect new targets
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error: any) {
     console.error("Error updating user profile:", error);
     return { error: error.message };
   }
 }
+
+// --- REMOVED ---
+// The old updateUserStreak server action has been deleted from this file.
+// The logic now lives in the client-side utility at src/lib/streakUtils.ts

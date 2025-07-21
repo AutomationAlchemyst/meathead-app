@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -7,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import type { WaterLog } from '@/types';
-import { Loader2, Droplet, Info, PlusCircle, CheckCircle2, Circle } from 'lucide-react';
+import { Loader2, Droplet, Info, PlusCircle, CheckCircle2, Circle, GlassWater } from 'lucide-react'; // Added GlassWater icon
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { db } from '@/lib/firebase';
@@ -80,7 +79,7 @@ export default function TodaysWaterCard() {
   }, [user, authLoading]);
 
   const getProgressValue = (consumed?: number, target?: number) => {
-    if (target && target > 0 && consumed && consumed >= 0) { // consumed can be 0
+    if (target && target > 0 && consumed && consumed >= 0) {
       return Math.min((consumed / target) * 100, 100);
     }
     return 0;
@@ -198,15 +197,32 @@ export default function TodaysWaterCard() {
         </div>
         {targetWater && targetWater > 0 ? (
             <Progress value={getProgressValue(consumedWater, targetWater)} className="h-3 [&>div]:bg-blue-500" />
-          ) : (
+            ) : (
             <div className="h-3 bg-muted rounded-full w-full flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">
                     <Link href="/profile" className="underline hover:text-primary">Set water target</Link> to see progress.
                 </p>
             </div>
         )}
-        <Button variant="default" size="sm" asChild className="w-full mt-4">
-            <Link href="/water-tracking"><PlusCircle className="mr-2 h-4 w-4"/>Log Water</Link>
+
+        {/* --- IMPROVEMENT ---
+            This button is now dynamic. It changes its appearance and text based on
+            whether the user has already logged water today. This creates a proactive
+            prompt for the user's first action of the day.
+        */}
+        <Button 
+          variant={waterLoggedToday ? "outline" : "default"} 
+          size="sm" 
+          asChild 
+          className="w-full mt-4"
+        >
+            <Link href="/water-tracking">
+              {waterLoggedToday ? (
+                <><PlusCircle className="mr-2 h-4 w-4"/>Log More Water</>
+              ) : (
+                <><GlassWater className="mr-2 h-4 w-4"/>Log Your First Glass</>
+              )}
+            </Link>
         </Button>
       </CardContent>
     </Card>

@@ -1,12 +1,59 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, updateDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
 import type { FoodLog } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { updateUserStreak } from './user';
 
+
+export async function addMultipleFoodLogs(
+  // The input type is now any, as the date will be serialized from the client.
+  userId: string,
+  foodItems: any[] 
+): Promise<{ success?: boolean; error?: string }> {
+  if (!userId) {
+    return { error: "User not authenticated." };
+  }
+  if (!foodItems || foodItems.length === 0) {
+    return { error: "No food items to log." };
+  }
+
+  try {
+    const batch = writeBatch(db);
+    const foodLogsRef = collection(db, 'users', userId, 'foodLogs');
+
+    for (const item of foodItems) {
+      const newLogRef = doc(foodLogsRef);
+      
+      // --- IMPROVEMENT ---
+      // We now convert the simple Date object received from the client
+      // into a proper Firebase Timestamp right here on the server.
+      const logData = {
+        ...item,
+        userId,
+        loggedAt: Timestamp.fromDate(new Date(item.loggedAt)) // Convert serialized date back to Timestamp
+      };
+      
+      batch.set(newLogRef, logData);
+    }
+
+    await batch.commit();
+
+    await updateUserStreak(userId);
+    
+    revalidatePath('/food-logging');
+    revalidatePath('/dashboard');
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Error adding multiple food logs:", error);
+    return { error: error.message || "Failed to add food logs." };
+  }
+}
+
+// ... (The rest of your file remains the same)
 
 export async function getTodaysFoodLogs(userId: string): Promise<FoodLog[]> {
   if (!userId) return [];
@@ -61,11 +108,10 @@ export async function updateFoodLog(
 
   try {
     const foodLogRef = doc(db, 'users', userId, 'foodLogs', logId);
-    // Note: Server-side validation for user ownership should be handled by Firestore security rules.
     await updateDoc(foodLogRef, parsedData.data);
     
     revalidatePath('/food-logging');
-    revalidatePath('/dashboard'); // TodaysMacrosCard might need an update
+    revalidatePath('/dashboard');
     return { success: true };
   } catch (error: any) {
     console.error("Error updating food log:", error);
@@ -86,7 +132,6 @@ export async function deleteFoodLog(
 
   try {
     const foodLogRef = doc(db, 'users', userId, 'foodLogs', logId);
-    // Note: Server-side validation for user ownership should be handled by Firestore security rules.
     await deleteDoc(foodLogRef);
     
     revalidatePath('/food-logging');

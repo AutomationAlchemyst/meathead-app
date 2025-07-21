@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { ReactElement } from 'react';
@@ -14,16 +13,18 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, Timestamp, limit } from 'firebase/firestore';
+// --- THE FIX ---
+// We explicitly import Timestamp to use Timestamp.now()
+import { collection, addDoc, query, where, getDocs, Timestamp, limit } from 'firebase/firestore';
 import type { WorkoutLog } from '@/types';
-import { isSameDay } from 'date-fns';
+import { updateUserStreakClientSide } from '@/lib/streakUtils';
 
 
 interface WorkoutPlanDisplayProps {
   plan: GenerateWorkoutPlanOutput;
   onAdaptPlan: (missedDayNumber: number, currentPlan: GenerateWorkoutPlanOutput) => Promise<void>;
   isAdaptingPlan: boolean;
-  canAdaptPlan: boolean; // New prop
+  canAdaptPlan: boolean;
 }
 
 function ExerciseDisplay({ exercise }: { exercise: Exercise }): ReactElement {
@@ -58,13 +59,13 @@ function DailyWorkoutDisplay({
   plan,
   onAdaptPlan,
   isAdaptingPlanParent,
-  canAdaptPlan // Receive new prop
+  canAdaptPlan
 }: {
   dailyWorkout: DailyWorkout;
   plan: GenerateWorkoutPlanOutput;
   onAdaptPlan: (missedDayNumber: number, currentPlan: GenerateWorkoutPlanOutput) => Promise<void>;
   isAdaptingPlanParent: boolean;
-  canAdaptPlan: boolean; // Add to type
+  canAdaptPlan: boolean;
 }): ReactElement {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -75,8 +76,8 @@ function DailyWorkoutDisplay({
   const isRestDay = dailyWorkout.focus.toLowerCase() === 'rest' || dailyWorkout.focus.toLowerCase() === 'rest day';
   const isActiveRecoveryDay = dailyWorkout.focus.toLowerCase().includes('active recovery');
   const isEffectivelyEmptyWorkout = (!dailyWorkout.exercises || dailyWorkout.exercises.length === 0) &&
-                                   (!dailyWorkout.warmUp || dailyWorkout.warmUp.length === 0) &&
-                                   (!dailyWorkout.coolDown || dailyWorkout.coolDown.length === 0);
+                                      (!dailyWorkout.warmUp || dailyWorkout.warmUp.length === 0) &&
+                                      (!dailyWorkout.coolDown || dailyWorkout.coolDown.length === 0);
 
   useEffect(() => {
     if (user && !isRestDay) {
@@ -121,9 +122,14 @@ function DailyWorkoutDisplay({
         dayNumber: dailyWorkout.dayNumber,
         dayName: dailyWorkout.dayName,
         focus: dailyWorkout.focus,
-        completedAt: serverTimestamp(),
+        // --- THE FIX ---
+        // We replace the complex serverTimestamp() with a simple, client-side Timestamp.now()
+        completedAt: Timestamp.now(),
       };
       await addDoc(collection(db, 'users', user.uid, 'workoutLogs'), workoutLogEntry);
+      
+      await updateUserStreakClientSide(user.uid);
+
       toast({ title: "Workout Logged!", description: `${dailyWorkout.dayName} marked as completed.` });
       setIsLoggedForPlan(true);
     } catch (error: any) {
@@ -261,7 +267,7 @@ export default function WorkoutPlanDisplay({ plan, onAdaptPlan, isAdaptingPlan, 
                   plan={plan}
                   onAdaptPlan={onAdaptPlan}
                   isAdaptingPlanParent={isAdaptingPlan}
-                  canAdaptPlan={canAdaptPlan} // Pass it down
+                  canAdaptPlan={canAdaptPlan}
                 />
               </AccordionContent>
             </AccordionItem>
@@ -292,4 +298,3 @@ export default function WorkoutPlanDisplay({ plan, onAdaptPlan, isAdaptingPlan, 
     </Card>
   );
 }
-    

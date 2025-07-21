@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -10,13 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Droplet, Edit3 } from 'lucide-react'; // Added Edit3
+import { Loader2, PlusCircle, Droplet, Edit3 } from 'lucide-react';
+
+// --- THE FIX: PART 1 ---
+// We bring back the necessary client-side Firebase tools for writing data.
 import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+// We import our new CLIENT-SIDE streak utility.
+import { updateUserStreakClientSide } from '@/lib/streakUtils';
+
 
 const waterLogSchema = z.object({
-  amount: z.coerce.number({invalid_type_error: "Please enter a valid number for the amount."}) // Attempts to convert input to number
+  amount: z.coerce.number({invalid_type_error: "Please enter a valid number for the amount."})
     .positive({ message: 'Amount must be a positive number (e.g., 1 or more).' })
     .min(1, { message: "Minimum amount is 1ml." }),
 });
@@ -33,7 +37,6 @@ const commonAmounts = [
 export default function WaterLogForm() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<WaterLogFormValues>({
@@ -43,28 +46,32 @@ export default function WaterLogForm() {
     },
   });
 
-  const logWaterAmount = async (amountToLog: number) => {
+  // --- THE FIX: PART 2 ---
+  // This onSubmit function now runs entirely on the client-side,
+  // which means it's authenticated and allowed by our security rules.
+  const onSubmit = async (data: WaterLogFormValues) => {
     if (!user) {
       toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
       return;
     }
-    // This client-side check is now primarily handled by Zod, but can remain as a safeguard.
-    if (amountToLog <= 0) {
-        toast({ title: 'Invalid Amount', description: 'Please enter a positive amount of at least 1ml.', variant: 'destructive' });
-        return;
-    }
 
     setIsSubmitting(true);
     try {
+      // 1. Create the new water log object.
       const newWaterLog = {
         userId: user.uid,
-        amount: amountToLog,
+        amount: data.amount,
         loggedAt: serverTimestamp(),
       };
+      
+      // 2. Write the data directly from the client. This is authenticated.
       await addDoc(collection(db, 'users', user.uid, 'waterLogs'), newWaterLog);
-      toast({ title: 'Water Logged!', description: `${amountToLog}ml of water recorded.` });
+
+      // 3. After success, call our client-side streak utility. This is also authenticated.
+      await updateUserStreakClientSide(user.uid);
+
+      toast({ title: 'Water Logged!', description: `${data.amount}ml of water recorded.` });
       form.reset({ amount: undefined }); 
-      router.refresh(); 
     } catch (error: any) {
       console.error("Error logging water:", error);
       toast({ title: 'Logging Failed', description: error.message || "Could not log water intake.", variant: 'destructive' });
@@ -72,9 +79,12 @@ export default function WaterLogForm() {
       setIsSubmitting(false);
     }
   };
-
-  const onSubmit = (data: WaterLogFormValues) => {
-    logWaterAmount(data.amount);
+  
+  const handlePresetClick = (amount: number) => {
+    form.setValue('amount', amount, { shouldValidate: true });
+    setTimeout(() => {
+      form.handleSubmit(onSubmit)();
+    }, 0);
   };
 
   return (
@@ -84,13 +94,7 @@ export default function WaterLogForm() {
             <Button 
                 key={item.value} 
                 variant="outline" 
-                onClick={() => {
-                    // Manually set and validate the value if a preset button is clicked.
-                    form.setValue('amount', item.value, { shouldValidate: true });
-                    // Directly call logWaterAmount if it passes validation, or let form submit handle it.
-                    // For simplicity, we can trigger form submission which will validate.
-                    form.handleSubmit(onSubmit)();
-                }} 
+                onClick={() => handlePresetClick(item.value)} 
                 disabled={isSubmitting || authLoading}
                 className="flex flex-col h-auto py-3 px-2 text-center"
             >
@@ -109,8 +113,8 @@ export default function WaterLogForm() {
           <div className="flex items-center gap-2">
             <Input
               id="amount"
-              type="number" // Keep type="number" for numeric keyboard on mobile
-              step="any" // Allow any decimal for more flexibility if desired, or keep step="50"
+              type="number"
+              step="any"
               min="1"
               {...form.register('amount')}
               placeholder="e.g., 300"

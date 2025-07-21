@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -16,14 +15,19 @@ import { Badge } from "@/components/ui/badge";
 import { estimateMacros, type EstimateMacrosInput, type EstimateMacrosOutput } from '@/ai/flows/estimate-macros';
 import { parseNaturalLanguageFoodInput, type ParseNaturalLanguageFoodInput, type ParsedFoodItem } from '@/ai/flows/parse-natural-language-food-input';
 import { getKetoGuidance, type GetKetoGuidanceInput, type GetKetoGuidanceOutput } from '@/ai/flows/get-keto-guidance';
+
+// --- THE FIX: PART 1 ---
+// We bring back the necessary client-side Firebase tools for writing data.
 import { db } from '@/lib/firebase';
-import { collection, addDoc, Timestamp, writeBatch, doc } from 'firebase/firestore'; // Use Timestamp for specific dates
+import { collection, doc, writeBatch, Timestamp } from 'firebase/firestore';
+import { updateUserStreak } from '@/actions/user'; // We will still call this server action!
+
 import type { FoodLog } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import UpgradePrompt from '@/components/premium/UpgradePrompt'; // Import UpgradePrompt
+import UpgradePrompt from '@/components/premium/UpgradePrompt';
 
 const foodLogSchema = z.object({
   naturalLanguageQuery: z.string().min(3, { message: 'Please describe your meal (e.g., "an apple and a cup of coffee").' }),
@@ -34,7 +38,7 @@ type FoodLogFormValues = z.infer<typeof foodLogSchema>;
 interface EstimatedItemBase extends ParsedFoodItem, EstimateMacrosOutput {}
 interface EnhancedEstimatedItem extends EstimatedItemBase, GetKetoGuidanceOutput {}
 
-const MAX_FREE_AI_LOGS = 3; // Max free AI-powered logs per session (simulated)
+const MAX_FREE_AI_LOGS = 3;
 
 export default function FoodLogForm() {
   const { user, loading: authLoading, isPremium } = useAuth();
@@ -46,7 +50,6 @@ export default function FoodLogForm() {
   const [processedItemsDisplay, setProcessedItemsDisplay] = useState<EnhancedEstimatedItem[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
-  // Freemium simulation state
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
   const [monthlyFreeAILogsUsed, setMonthlyFreeAILogsUsed] = useState(0);
   const [trialAvailable, setTrialAvailable] = useState(true);
@@ -74,126 +77,92 @@ export default function FoodLogForm() {
   };
 
   const onSubmit = async (data: FoodLogFormValues) => {
-    if (!user) {
-      toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
-      return;
-    }
-    if (!selectedDate) {
-      toast({ title: 'Error', description: 'Please select a date for your meal log.', variant: 'destructive' });
+    if (!user || !selectedDate) {
+      toast({ title: 'Error', description: 'You must be logged in and select a date.', variant: 'destructive' });
       return;
     }
 
     if (!canUseAILogging) {
-      toast({ title: "AI Logging Limit Reached", description: "Upgrade to Premium or start a trial for unlimited AI-powered food logging.", variant: "destructive" });
+      toast({ title: "AI Logging Limit Reached", description: "Upgrade to Premium for unlimited AI food logging.", variant: "destructive" });
       return;
     }
     incrementUsageAndCheckLimit();
 
     setIsSubmitting(true);
     setIsParsing(true);
+    setProcessedItemsDisplay(null);
     setIsEstimatingMacros(false);
     setIsGettingKetoGuidance(false);
-    setProcessedItemsDisplay(null);
 
-    let parsedItems: ParsedFoodItem[] = [];
     try {
-      const parseInput: ParseNaturalLanguageFoodInput = { naturalLanguageQuery: data.naturalLanguageQuery };
-      parsedItems = await parseNaturalLanguageFoodInput(parseInput);
+      const parsedItems = await parseNaturalLanguageFoodInput({ naturalLanguageQuery: data.naturalLanguageQuery });
       setIsParsing(false);
+      if (!parsedItems || parsedItems.length === 0) throw new Error("Could not understand the meal description. Please try rephrasing.");
 
-      if (!parsedItems || parsedItems.length === 0) {
-        toast({ title: 'Parsing Failed', description: "Could not understand the meal description. Please try rephrasing or be more specific.", variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
-      
       setIsEstimatingMacros(true);
-      const itemsWithMacros: EstimatedItemBase[] = [];
-      for (const item of parsedItems) {
+      const itemsWithMacros: EstimatedItemBase[] = await Promise.all(parsedItems.map(async (item) => {
         try {
-          const macroInput: EstimateMacrosInput = { foodItem: item.foodItem, quantity: item.quantity };
-          const aiEstimatedMacros = await estimateMacros(macroInput);
-          if (aiEstimatedMacros && typeof aiEstimatedMacros.calories === 'number') {
-            itemsWithMacros.push({ ...item, ...aiEstimatedMacros });
-          } else {
-            itemsWithMacros.push({ ...item, calories: 0, protein: 0, carbs: 0, fat: 0 });
-          }
-        } catch (estimationError) {
-           itemsWithMacros.push({ ...item, calories: 0, protein: 0, carbs: 0, fat: 0 });
+          const macros = await estimateMacros({ foodItem: item.foodItem, quantity: item.quantity });
+          return { ...item, ...macros };
+        } catch {
+          return { ...item, calories: 0, protein: 0, carbs: 0, fat: 0 };
         }
-      }
+      }));
       setIsEstimatingMacros(false);
 
-      if (itemsWithMacros.length === 0) {
-        toast({ title: 'Macro Estimation Failed', description: "Could not estimate macros for any items in your meal. Please try again.", variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
-
       setIsGettingKetoGuidance(true);
-      const firestoreBatch = writeBatch(db);
-      const finalProcessedItems: EnhancedEstimatedItem[] = [];
-
-      for (const itemWithMacro of itemsWithMacros) {
-        const macroEstimationFailed = itemWithMacro.calories === 0 && itemWithMacro.protein === 0 && itemWithMacro.carbs === 0 && itemWithMacro.fat === 0 && parsedItems.find(p => p.foodItem === itemWithMacro.foodItem);
-
-        if (macroEstimationFailed) {
-           finalProcessedItems.push({ ...itemWithMacro, isKetoFriendly: false, suggestion: "Macro estimation failed for this item." });
-        } else {
-            try {
-              const ketoInput: GetKetoGuidanceInput = { ...itemWithMacro };
-              const ketoGuidance = await getKetoGuidance(ketoInput);
-              finalProcessedItems.push({ ...itemWithMacro, ...ketoGuidance });
-            } catch (ketoError) {
-              finalProcessedItems.push({ ...itemWithMacro, isKetoFriendly: false, suggestion: "Could not get keto guidance for this item." });
-            }
+      const finalProcessedItems: EnhancedEstimatedItem[] = await Promise.all(itemsWithMacros.map(async (item) => {
+        try {
+          const guidance = await getKetoGuidance(item);
+          return { ...item, ...guidance };
+        } catch {
+          return { ...item, isKetoFriendly: false, suggestion: "Could not get keto guidance for this item." };
         }
-        
-        const newFoodLog: Omit<FoodLog, 'id'> = {
-          userId: user.uid,
-          foodItem: itemWithMacro.foodItem,
-          quantity: itemWithMacro.quantity,
-          calories: itemWithMacro.calories,
-          protein: itemWithMacro.protein,
-          carbs: itemWithMacro.carbs,
-          fat: itemWithMacro.fat,
-          loggedAt: Timestamp.fromDate(selectedDate),
-        };
-        const foodLogRef = doc(collection(db, 'users', user.uid, 'foodLogs'));
-        firestoreBatch.set(foodLogRef, newFoodLog);
-      }
+      }));
       setIsGettingKetoGuidance(false);
       
       if (finalProcessedItems.length > 0) {
-        await firestoreBatch.commit();
+        // --- THE FIX: PART 2 ---
+        // We move the database writing logic back here to the client component.
+        // Because this code runs in the browser, it has the user's auth token ("ID badge").
+        const batch = writeBatch(db);
+        
+        finalProcessedItems.forEach(item => {
+          const foodLogRef = doc(collection(db, 'users', user.uid, 'foodLogs'));
+          const newFoodLog: Omit<FoodLog, 'id'> = {
+            userId: user.uid,
+            foodItem: item.foodItem,
+            quantity: item.quantity,
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            loggedAt: Timestamp.fromDate(selectedDate),
+          };
+          batch.set(foodLogRef, newFoodLog);
+        });
+
+        // The client writes the data...
+        await batch.commit();
+
+        // ...and then we call our server action to update the streak.
+        await updateUserStreak(user.uid);
+
         setProcessedItemsDisplay(finalProcessedItems);
-        const successfulEstimations = finalProcessedItems.filter(item => item.suggestion !== "Macro estimation failed for this item.").length;
-        const totalItems = finalProcessedItems.length;
-        if (successfulEstimations === totalItems) {
-            toast({ title: `Meal Logged for ${format(selectedDate, 'PPP')}!`, description: `${totalItems} item(s) analyzed and saved.` });
-        } else {
-            toast({ title: `Meal Partially Logged for ${format(selectedDate, 'PPP')}`, description: `${successfulEstimations} of ${totalItems} item(s) fully analyzed. Check details below.`, variant: 'default', duration: 7000 });
-        }
+        toast({ title: `Meal Logged for ${format(selectedDate, 'PPP')}!`, description: `${finalProcessedItems.length} item(s) analyzed and saved.` });
         form.reset();
+
       } else {
-        toast({ title: 'Processing Failed', description: "No items could be fully processed.", variant: 'destructive' });
+        throw new Error("No items could be fully processed.");
       }
 
     } catch (error: any) {
+      toast({ title: 'Logging Failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
       setIsParsing(false);
       setIsEstimatingMacros(false);
       setIsGettingKetoGuidance(false);
-      let errorMsg = "Failed to log food item.";
-      if (error.code === 'permission-denied' || error.message?.includes('PERMISSION_DENIED') || error.message?.includes('Missing or insufficient permissions')) {
-        errorMsg = "Saving failed: Insufficient permissions. Please check your Firestore security rules.";
-      } else if (error.message?.includes("API key not valid")) {
-        errorMsg = "AI service configuration error. Please contact support.";
-      } else if (error.message) {
-        errorMsg = error.message;
-      }
-      toast({ title: 'Logging Failed', description: errorMsg, variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -244,16 +213,16 @@ export default function FoodLogForm() {
       {!canUseAILogging && !isPremium && trialDaysRemaining <= 0 && (
          <div className="my-4">
            <UpgradePrompt
-               featureName="AI Food Logging"
-               message="You've used your free AI-powered logs. Upgrade to Premium or start a trial for unlimited smart meal logging!"
+              featureName="AI Food Logging"
+              message="You've used your free AI-powered logs. Upgrade to Premium or start a trial for unlimited smart meal logging!"
            />
            {trialAvailable && (
-               <Button onClick={startTrial} size="lg" className="w-full mt-4">
-                   <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial for AI Logging
-               </Button>
+              <Button onClick={startTrial} size="lg" className="w-full mt-4">
+                  <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial for AI Logging
+              </Button>
            )}
          </div>
-       )}
+        )}
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -374,4 +343,3 @@ export default function FoodLogForm() {
     </div>
   );
 }
-    
