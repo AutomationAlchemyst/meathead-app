@@ -1,18 +1,20 @@
-
 'use client';
 
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Rocket, Sparkles, Newspaper, Handshake, ArrowRight, UserCheck, Utensils, CheckCircle, Compass, CalendarDays, MessageCircle } from 'lucide-react';
+import { Rocket, Sparkles, Newspaper, Handshake, ArrowRight, UserCheck, Utensils, CheckCircle, Compass, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from "@/components/ui/separator";
-import { format, parseISO, isValid as isValidDateFn } from 'date-fns';
-import { Timestamp } from 'firebase/firestore';
+import { format } from 'date-fns';
 import Image from 'next/image';
-import { Logo } from '@/components/icons/Logo'; // Added import for Logo
+import { Logo } from '@/components/icons/Logo';
+
+// --- NEW ---
+// We are importing the new modal component we created.
+import { ProfileSetupModal } from '@/components/onboarding/ProfileSetupModal';
 
 function WelcomePageSkeleton() {
     return (
@@ -33,7 +35,7 @@ function WelcomePageSkeleton() {
                     </CardContent>
                 </Card>
 
-                 <div className="text-center mb-10">
+                <div className="text-center mb-10">
                     <Skeleton className="h-6 w-1/2 mx-auto mb-6" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {[...Array(3)].map((_, i) => (
@@ -46,7 +48,7 @@ function WelcomePageSkeleton() {
                     {[...Array(3)].map((_, i) => (
                         <Card key={i} className="shadow-lg">
                             <CardHeader>
-                                <Skeleton className="h-12 w-20 mx-auto mb-3 rounded-full" /> {/* Adjusted for image */}
+                                <Skeleton className="h-12 w-20 mx-auto mb-3 rounded-full" />
                                 <Skeleton className="h-6 w-3/4 mx-auto" />
                             </CardHeader>
                             <CardContent className="space-y-3">
@@ -142,16 +144,13 @@ export default function WelcomePage() {
                         <p className="text-sm text-muted-foreground mb-6 max-w-xl mx-auto">
                             This helps MeatHead personalize your experience, calculate your macro targets, and tailor AI-powered suggestions for recipes and workouts.
                         </p>
-                        <Button 
-                            size="lg" 
-                            asChild 
-                            className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-lg transition-all duration-300 ease-in-out hover:scale-105 text-lg py-7 px-10"
-                        >
-                            <Link href="/profile">
-                                Complete Your Profile
-                                <ArrowRight className="ml-2 h-5 w-5" />
-                            </Link>
-                        </Button>
+                        
+                        {/* --- IMPROVEMENT --- 
+                            Instead of a simple link to the profile page, we now use our interactive modal.
+                            This provides a much more guided and conversational onboarding experience,
+                            directly from the welcome page.
+                        */}
+                        <ProfileSetupModal />
                     </>
                 )}
             </CardContent>
@@ -285,7 +284,7 @@ export default function WelcomePage() {
                 <p className="pl-5 text-xs">This "Start Here" page is your new guide, always accessible from the navigation bar.</p>
               </div>
               <div className="pt-3 mt-3 border-t border-border/50">
-                 <p className="text-xs text-muted-foreground/80 italic text-center">Updated as of: {format(new Date(), "MMMM d, yyyy")}</p>
+                   <p className="text-xs text-muted-foreground/80 italic text-center">Updated as of: {format(new Date(), "MMMM d, yyyy")}</p>
               </div>
             </CardContent>
           </Card>
@@ -314,5 +313,3 @@ export default function WelcomePage() {
     </AppLayout>
   );
 }
-
-      
