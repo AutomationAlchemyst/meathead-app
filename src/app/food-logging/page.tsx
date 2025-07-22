@@ -2,6 +2,7 @@
 
 import AppLayout from '@/components/layout/AppLayout';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/contexts/AuthContext';
 
 // --- THE FIX ---
 // We now use named imports for all components on this page.

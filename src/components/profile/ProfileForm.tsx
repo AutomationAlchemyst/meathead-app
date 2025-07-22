@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea'; // Import Textarea
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, UserCircle, Target, Activity, CalendarCheck, CalendarIcon as CalendarLucideIcon, WeightIcon, PlayCircleIcon, Flame, Beef, Wheat, Droplets, Edit3, Info, Droplet, Brain, Quote } from 'lucide-react';
 import type { UserProfile, ActivityLevel } from '@/types';
@@ -22,6 +21,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 const activityLevels = [

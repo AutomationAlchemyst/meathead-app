@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { FoodLog } from '@/types';
 import { Loader2, Flame, Beef, Wheat, Droplets, Info, CheckCircle2, Circle, Utensils } from 'lucide-react';
 import Link from 'next/link';

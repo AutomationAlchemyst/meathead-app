@@ -3,7 +3,7 @@
 
 import { useEffect, useState }from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { ToastAction } from '@/components/ui/toast';

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react'; // Replaced Chili with Flame, added Gem, Zap
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

@@ -1,6 +1,5 @@
 'use client';
-
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const GreetingHeader = () => {

@@ -1,19 +1,19 @@
-
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogOut, LayoutDashboard, UserCircle, Sparkles, Dumbbell, Droplet, MessageCircle, Compass } from 'lucide-react'; // Added Compass
-import { useAuth } from '@/hooks/useAuth';
+import { Menu, LogOut, LayoutDashboard, UserCircle, Sparkles, Dumbbell, Droplet, MessageCircle, Compass } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { Logo } from '@/components/icons/Logo';
+import { useAuth } from '@/contexts/AuthContext';
+
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/welcome', label: 'Start Here', icon: Compass }, // Added Welcome/Guide page
+  { href: '/welcome', label: 'Start Here', icon: Compass },
   { href: '/recipe-generator', label: 'Recipe Genie', icon: Sparkles },
   { href: '/workout-planner', label: 'Workout Planner', icon: Dumbbell },
   { href: '/water-tracking', label: 'Water Log', icon: Droplet },
@@ -23,12 +23,16 @@ const navItems = [
 
 export function Navbar() {
   const { user } = useAuth();
-  const router = useRouter();
+  const router = useRouter(); // Keep useRouter for potential future use, though not needed for logout now.
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push('/login');
+      // --- THE FIX ---
+      // We no longer need to manually redirect here.
+      // The onAuthStateChanged listener in AuthContext and the useEffect in AppLayout
+      // will detect the user is null and handle the redirect automatically and safely.
+      // router.push('/login'); // This line is removed.
     } catch (error) {
       console.error('Error signing out:', error);
     }

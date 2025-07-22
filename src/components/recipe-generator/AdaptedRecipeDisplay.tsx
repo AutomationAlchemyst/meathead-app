@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FileText, ShoppingBasket, CookingPot, Sparkles, Info, CheckSquare, ChevronsRight, PlusCircle, Loader2, Flame, Beef, Wheat, Droplets as FatIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AdaptedRecipeDisplayProps {
   adaptedRecipe: AdaptRecipeOutput;

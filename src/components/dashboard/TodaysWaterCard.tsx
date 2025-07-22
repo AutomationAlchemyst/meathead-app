@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { WaterLog } from '@/types';
 import { Loader2, Droplet, Info, PlusCircle, CheckCircle2, Circle, GlassWater } from 'lucide-react';
 import Link from 'next/link';

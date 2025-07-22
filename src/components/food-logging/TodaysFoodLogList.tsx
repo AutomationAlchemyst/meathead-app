@@ -2,7 +2,7 @@
 
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { FoodLog } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Loader2, ListChecks } from 'lucide-react';

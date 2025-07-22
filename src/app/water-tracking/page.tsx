@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import WaterLogForm from '@/components/water-tracking/WaterLogForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Droplet } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import TodaysWaterLogsList from '@/components/water-tracking/TodaysWaterLogsList'; // Import the new component
 
 export default function WaterTrackingPage() {

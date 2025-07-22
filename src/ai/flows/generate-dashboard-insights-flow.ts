@@ -1,27 +1,19 @@
-
 'use server';
 /**
- * @fileOverview Generates personalized dashboard insights and motivational messages.
- *
- * - generateDashboardInsights - A function that handles insight generation.
- * - GenerateDashboardInsightsInput - The input type for the AI prompt.
- * - GenerateDashboardInsightsOutput - The return type for the AI prompt.
+ * @fileOverview Generates personalized, contextual dashboard insights.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-// Original types are used for defining the Plain types passed to the exported function.
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import type { UserProfile as UserProfileType, FoodLog as FoodLogType, WeightLog as WeightLogType, WorkoutLog as WorkoutLogType, WaterLog as WaterLogType, ActivityLevel } from '@/types';
-// Firebase Timestamp is not used here as inputs are expected to be plain.
 
-// Define plain types for function inputs (where Timestamps are already strings)
+// --- Plain Types for Server Action Input ---
 interface UserProfilePlain extends Omit<UserProfileType, 'createdAt' | 'journeyStartDate' | 'updatedAt' | 'activeWorkoutPlan'> {
-  uid: string; // Explicitly ensure uid is here
-  createdAt: string; // Expecting string from client
-  journeyStartDate?: string | null; // Expecting string or null from client
-  updatedAt?: string | null; // Expecting string or null from client
-  targetWaterIntake?: number | null; 
-  // activeWorkoutPlan is not directly sent to AI for insights, specific workout logs are.
+  uid: string;
+  createdAt: string;
+  journeyStartDate?: string | null;
+  updatedAt?: string | null;
+  targetWaterIntake?: number | null;
 }
 
 interface FoodLogPlain extends Omit<FoodLogType, 'loggedAt' | 'id' | 'userId'> {
@@ -36,17 +28,17 @@ interface WorkoutLogPlain extends Omit<WorkoutLogType, 'completedAt' | 'id' | 'u
   completedAt: string;
 }
 
-interface WaterLogPlain extends Omit<WaterLogType, 'loggedAt' | 'id' | 'userId'> { 
+interface WaterLogPlain extends Omit<WaterLogType, 'loggedAt' | 'id' | 'userId'> {
   amount: number;
   loggedAt: string;
 }
 
-
-// Zod schemas for AI prompt input (already expect strings for dates)
+// --- Zod Schemas for AI Prompt ---
 const UserProfileSchemaFields = {
   uid: z.string().describe("User's unique identifier."),
   email: z.string().nullable(),
   displayName: z.string().nullable().optional(),
+  myWhy: z.string().nullable().optional().describe("User's core motivation or reason for their journey."),
   currentWeight: z.number().nullable().optional(),
   createdAt: z.string().describe("Account creation date, ISO format."),
   updatedAt: z.string().nullable().optional().describe("Profile last update date, ISO format."),
@@ -55,7 +47,7 @@ const UserProfileSchemaFields = {
   targetCarbs: z.number().nullable().optional(),
   targetFat: z.number().nullable().optional(),
   targetWeight: z.number().nullable().optional(),
-  targetWaterIntake: z.number().int().min(0).nullable().optional().describe("User's daily water intake target in ml."), 
+  targetWaterIntake: z.number().int().min(0).nullable().optional().describe("User's daily water intake target in ml."),
   activityLevel: z.enum(['sedentary', 'lightlyActive', 'active', 'veryActive']).nullable().optional(),
   estimatedGoalDate: z.string().nullable().optional().describe("Estimated date to reach target weight, e.g., 'MMMM d, yyyy' or a status message."),
   startingWeight: z.number().nullable().optional(),
@@ -90,251 +82,138 @@ const WorkoutLogSchemaFields = {
 };
 const WorkoutLogInputSchema = z.object(WorkoutLogSchemaFields);
 
-const WaterLogSchemaFields = { 
-    amount: z.number().int().min(0).describe("Amount of water logged in milliliters (ml)."),
-    loggedAt: z.string().describe("Log date, ISO format."),
+const WaterLogSchemaFields = {
+  amount: z.number().int().min(0).describe("Amount of water logged in milliliters (ml)."),
+  loggedAt: z.string().describe("Log date, ISO format."),
 };
 const WaterLogInputSchema = z.object(WaterLogSchemaFields);
 
 
 const GenerateDashboardInsightsInputSchema = z.object({
   userProfile: UserProfileInputSchema.describe("The user's profile data."),
-  recentFoodLogs: z.array(FoodLogInputSchema).optional().describe("Array of food logs from the last 7-14 days. Empty if none."),
-  recentWeightLogs: z.array(WeightLogInputSchema).optional().describe("Array of weight logs from the last 30 days. Empty if none."),
-  recentWorkoutLogs: z.array(WorkoutLogInputSchema).optional().describe("Array of completed workout logs from the last 14-30 days. Empty if none."),
-  recentWaterLogs: z.array(WaterLogInputSchema).optional().describe("Array of water logs from the last 7 days. Empty if none."), 
+  todaysMacros: z.object({
+    calories: z.number(),
+    protein: z.number(),
+    carbs: z.number(),
+    fat: z.number(),
+  }).describe("A summary of macros consumed *today*."),
+  timeOfDay: z.enum(['morning', 'afternoon', 'evening']).describe("The current time of day to provide contextual advice."),
 });
 export type GenerateDashboardInsightsInput = z.infer<typeof GenerateDashboardInsightsInputSchema>;
 
-const GenerateDashboardInsightsOutputSchema = z.object({
-  mainHighlight: z.string().describe("A single, prominent, impactful message or key observation for the user."),
-  detailedInsights: z.array(z.string()).describe("An array of 2-4 additional specific insights, motivational messages, or pieces of guidance."),
-});
-export type GenerateDashboardInsightsOutput = z.infer<typeof GenerateDashboardInsightsOutputSchema>;
+// The output is now a single, powerful string.
+export type GenerateDashboardInsightsOutput = string;
 
-
+// This function now only prepares the data needed for the new, simpler prompt.
 const prepareInputForAI = (
-    profile: UserProfilePlain, 
-    foodLogs: FoodLogPlain[],
-    weightLogs: WeightLogPlain[],
-    workoutLogs: WorkoutLogPlain[],
-    waterLogs?: WaterLogPlain[] // Make waterLogs optional here to align with potential undefined calls initially
+  profile: UserProfilePlain,
+  foodLogs: FoodLogPlain[],
+  timeOfDay: 'morning' | 'afternoon' | 'evening'
 ): GenerateDashboardInsightsInput => {
+  const todaysDate = new Date().toISOString().split('T')[0];
+  const todaysFoodLogs = foodLogs.filter(log => log.loggedAt.startsWith(todaysDate));
 
-    let effectiveJourneyStartDate = profile.journeyStartDate;
-    if (!effectiveJourneyStartDate && profile.createdAt) {
-        effectiveJourneyStartDate = profile.createdAt; 
-    }
+  const todaysMacros = todaysFoodLogs.reduce((acc, log) => {
+    acc.calories += log.calories;
+    acc.protein += log.protein;
+    acc.carbs += log.carbs;
+    acc.fat += log.fat;
+    return acc;
+  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-    let effectiveStartingWeight = profile.startingWeight;
-    if (effectiveStartingWeight === null || effectiveStartingWeight === undefined) {
-        if (weightLogs.length > 0) {
-            const sortedLogs = [...weightLogs].sort((a,b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime());
-            effectiveStartingWeight = sortedLogs[0].weight;
-        } else if (profile.currentWeight) {
-            effectiveStartingWeight = profile.currentWeight;
-        }
-    }
-
-    const aiUserProfile = {
-        uid: profile.uid,
-        email: profile.email ?? null,
-        displayName: profile.displayName ?? null,
-        currentWeight: profile.currentWeight ?? null,
-        createdAt: profile.createdAt,
-        updatedAt: profile.updatedAt ?? null,
-        targetCalories: profile.targetCalories ?? null,
-        targetProtein: profile.targetProtein ?? null,
-        targetCarbs: profile.targetCarbs ?? null,
-        targetFat: profile.targetFat ?? null,
-        targetWeight: profile.targetWeight ?? null,
-        targetWaterIntake: profile.targetWaterIntake ?? null, 
-        activityLevel: profile.activityLevel ?? null,
-        estimatedGoalDate: profile.estimatedGoalDate ?? null,
-        startingWeight: effectiveStartingWeight ?? null,
-        journeyStartDate: effectiveJourneyStartDate ?? null,
-    };
-
-    return {
-        userProfile: aiUserProfile,
-        recentFoodLogs: (foodLogs || []).map(log => ({
-            ...log, 
-            loggedAt: log.loggedAt,
-        })),
-        recentWeightLogs: (weightLogs || []).map(log => ({
-            ...log,
-            loggedAt: log.loggedAt, 
-        })),
-        recentWorkoutLogs: (workoutLogs || []).map(log => ({
-            ...log,
-            completedAt: log.completedAt,
-        })),
-        recentWaterLogs: (waterLogs || []).map(log => ({ 
-            ...log,
-            loggedAt: log.loggedAt,
-        })),
-    };
+  return {
+    userProfile: {
+      uid: profile.uid,
+      email: profile.email ?? null,
+      displayName: profile.displayName ?? null,
+      myWhy: profile.myWhy ?? null,
+      currentWeight: profile.currentWeight ?? null,
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt ?? null,
+      targetCalories: profile.targetCalories ?? null,
+      targetProtein: profile.targetProtein ?? null,
+      targetCarbs: profile.targetCarbs ?? null,
+      targetFat: profile.targetFat ?? null,
+      targetWeight: profile.targetWeight ?? null,
+      targetWaterIntake: profile.targetWaterIntake ?? null,
+      activityLevel: profile.activityLevel ?? null,
+      estimatedGoalDate: profile.estimatedGoalDate ?? null,
+      startingWeight: profile.startingWeight ?? null,
+      journeyStartDate: profile.journeyStartDate ?? null,
+    },
+    todaysMacros,
+    timeOfDay,
+  };
 };
 
+// The main exported function, updated to take timeOfDay.
 export async function generateDashboardInsights(
-    profile: UserProfilePlain,
-    foodLogs: FoodLogPlain[],
-    weightLogs: WeightLogPlain[],
-    workoutLogs: WorkoutLogPlain[],
-    waterLogs: WaterLogPlain[] // This parameter is now consistently passed from SmartInsightsCard
+  profile: UserProfilePlain,
+  foodLogs: FoodLogPlain[],
+  timeOfDay: 'morning' | 'afternoon' | 'evening'
 ): Promise<GenerateDashboardInsightsOutput> {
-  const aiInput = prepareInputForAI(profile, foodLogs, weightLogs, workoutLogs, waterLogs); 
-  console.log("[AI Flow] Input prepared for Genkit flow (with workouts and water):", JSON.stringify(aiInput, null, 2));
+  const aiInput = prepareInputForAI(profile, foodLogs, timeOfDay);
+  console.log("[AI Flow] Input prepared for Genkit flow:", JSON.stringify(aiInput, null, 2));
   return generateDashboardInsightsFlow(aiInput);
 }
 
+// The prompt is now focused on generating a single, contextual insight.
 const prompt = ai.definePrompt({
   name: 'generateDashboardInsightsPrompt',
-  input: {schema: GenerateDashboardInsightsInputSchema},
-  output: {schema: GenerateDashboardInsightsOutputSchema},
+  input: { schema: GenerateDashboardInsightsInputSchema },
+  output: { format: 'text' }, // We just want a simple string back.
   prompt: `
-You are Ath, a highly empathetic, knowledgeable, and supportive Keto fitness coach. Your goal is to provide personalized insights and motivation to the user, {{{userProfile.displayName}}}.
-Focus on holistic well-being, including non-scale victories, mental strength, hydration, and the interplay between diet and exercise. Your tone is relatable and encouraging.
+    You are Coach Ath, a wise, direct, and empathetic fitness and life coach from Singapore. Your tone is like a wise older brother ('Abang')—calm, encouraging, but no-nonsense. Your goal is to provide a single, actionable insight based on the user's progress for the day and the current time.
 
-User Profile:
-- Name: {{{userProfile.displayName}}} (UID: {{{userProfile.uid}}})
-- Current Weight: {{{userProfile.currentWeight}}} kg (if available, otherwise "not set")
-- Starting Weight: {{{userProfile.startingWeight}}} kg (if available, otherwise "not set, encourage user to set this in profile for better insights")
-- Target Weight: {{{userProfile.targetWeight}}} kg (if available, otherwise "not set")
-- Journey Start Date: {{{userProfile.journeyStartDate}}} (if available, otherwise "not set, encourage user to set this in profile for better insights")
-- Account Created At (fallback for journey start if not set): {{{userProfile.createdAt}}}
-- Last Profile Update: {{{userProfile.updatedAt}}} (if available)
-- Activity Level (from profile): {{{userProfile.activityLevel}}}
-- Target Daily Calories: {{{userProfile.targetCalories}}} kcal
-- Target Daily Protein: {{{userProfile.targetProtein}}} g
-- Target Daily Carbs: {{{userProfile.targetCarbs}}} g (usually around 20g for Keto)
-- Target Daily Fat: {{{userProfile.targetFat}}} g
-- Target Daily Water Intake: {{{userProfile.targetWaterIntake}}} ml (if available, otherwise "not set")
-- Estimated Goal Date: {{{userProfile.estimatedGoalDate}}}
+    **User's Profile & Targets:**
+    - Name: {{{userProfile.displayName}}}
+    - Daily Calorie Target: {{{userProfile.targetCalories}}} kcal
+    - Daily Protein Target: {{{userProfile.targetProtein}}} g
+    - Their "Why": "{{{userProfile.myWhy}}}"
 
-Recent Weight Logs (last 30 days, if any):
-{{#if recentWeightLogs.length}}
-{{#each recentWeightLogs}}
-- {{weight}} kg on {{loggedAt}}
-{{/each}}
-{{else}}
-- No recent weight logs.
-{{/if}}
+    **User's Progress So Far Today:**
+    - Calories Consumed: {{{todaysMacros.calories}}} kcal
+    - Protein Consumed: {{{todaysMacros.protein}}} g
 
-Recent Food Logs (last 7-14 days, if any):
-{{#if recentFoodLogs.length}}
-{{#each recentFoodLogs}}
-- {{foodItem}} ({{quantity}}): {{calories}}kcal, P:{{protein}}g, C:{{carbs}}g, F:{{fat}}g on {{loggedAt}}
-{{/each}}
-{{else}}
-- No recent food logs.
-{{/if}}
+    **Current Time of Day: {{{timeOfDay}}}**
 
-Recent Workout Logs (last 14-30 days, if any):
-{{#if recentWorkoutLogs.length}}
-{{#each recentWorkoutLogs}}
-- Workout: {{planName}} - {{dayName}} (Focus: {{focus}}) completed on {{completedAt}}
-{{/each}}
-{{else}}
-- No recent workout logs.
-{{/if}}
+    **Your Instructions:**
+    1.  **Analyze the Situation:** Based on the time of day and their progress, identify the single most important thing they should focus on next.
+    2.  **Be Proactive & Actionable:** Don't just report numbers. Give a specific, forward-looking suggestion.
+    3.  **Adapt to the Time of Day:**
+        - **Morning:** The day is young. Focus on setting a positive trajectory. If they've logged breakfast, comment on the start. If not, suggest a good first step.
+        - **Afternoon:** It's the midpoint. Check their progress against targets. Are they on track for protein? Is it time for a high-protein snack? How's their water intake (remind them gently if needed)?
+        - **Evening:** The day is winding down. Review the day's performance. If they met their goals, acknowledge it. If they're short, suggest a simple way to close the gap. If they're over, frame it as data for tomorrow.
+    4.  **Keep it Concise:** One or two powerful sentences.
+    5.  **Maintain the Coach Ath Voice:** Avoid generic compliments. Be authentic. If they have a "Why," subtly connect your advice to it.
 
-Recent Water Logs (last 7 days, if any):
-{{#if recentWaterLogs.length}}
-{{#each recentWaterLogs}}
-- Drank {{amount}}ml on {{loggedAt}}
-{{/each}}
-{{else}}
-- No recent water logs.
-{{/if}}
+    **Example Scenarios:**
+    - **Morning, on track:** "Good start with breakfast, {{{userProfile.displayName}}}. You've laid the foundation. Now, let's think about a protein-focused lunch."
+    - **Afternoon, low on protein:** "Alright, it's mid-day. You're about halfway to your protein goal. A handful of nuts or a protein shake now would be a solid move to stay on track."
+    - **Evening, met goals:** "You hit your protein target today. Good work. That's the system in action. Time to rest and reset for tomorrow."
+    - **Evening, over on calories:** "Okay, calories are a bit over today. No stress, it's just data. We learn from it and get back on the system tomorrow morning. One day doesn't break the cycle."
 
-Based on ALL the provided data (profile, food, weight, workouts, AND water), generate:
-1.  'mainHighlight': A single, prominent, impactful message. This could be a major milestone, a key observation combining diet, exercise, and hydration, or strong encouragement.
-2.  'detailedInsights': An array of 2-3 concise, actionable, and personalized insights or motivational messages.
-
-To make your insights more relatable and inspiring, you can draw from the following real experiences. Weave the sentiment or lesson into your advice.
-
-Shared Experiences for Inspiration (Diet Focused):
-1. Rapid Initial Weight Loss: "Often water weight, but a great sign your body is adapting."
-2. Reduced Bloating & Increased Energy: "Less bloating and stable energy once carbs are cut."
-3. Overcoming Keto Flu: "Electrolytes and hydration are key; it passes!"
-4. Cravings Change: "Sugary/starchy cravings diminish over time."
-5. Non-Scale Victories: "Clothes fitting looser, better sleep, clearer skin, focus – HUGE wins."
-6. Joy of Keto Cooking: "Discovering new keto recipes is fun."
-7. Navigating Social Situations: "Planning ahead for social events is empowering."
-8. Dealing with Plateaus: "Plateaus happen. Reassess, tweak macros, focus on consistency."
-9. Importance of Electrolytes: "Key to feeling good on keto."
-10. Tracking Helps: "Logging food provides valuable data and awareness."
-11. Listening to Your Body: "Tune into real hunger and satiety cues."
-12. Finding Your 'Why': "Connecting to a deeper reason helps weather tough days."
-13. Mindset Shift About Food: "Food as fuel and nutrients, not 'good' or 'bad'."
-
-Shared Experiences for Inspiration (Exercise Focused):
-14. Finding Joy in Movement: "Exercise becomes a source of energy and stress relief."
-15. Consistency Over Intensity: "Regular movement is more powerful than sporadic intense workouts."
-16. Non-Scale Victories from Exercise: "Feeling stronger, more endurance, clothes fitting better."
-17. Exercise and Keto Synergy: "Sustained energy for workouts once keto-adapted."
-18. Overcoming Gym Intimidation: "Focus on your own journey, not comparing. Everyone starts somewhere."
-19. Fueling Workouts on Keto: "Stay hydrated, electrolytes in check. Small protein snack if needed."
-
-Shared Experiences for Inspiration (Hydration Focused - NEW):
-20. Hydration Boosts Energy: "Proper hydration is often overlooked but can significantly impact energy levels and reduce 'keto flu' symptoms."
-21. Water Aids Fat Loss: "Staying well-hydrated supports metabolic function and can aid in fat loss processes."
-22. Clearer Skin & Better Digestion: "Many notice skin improvements and smoother digestion when consistently meeting water goals."
-23. Curbing False Hunger: "Sometimes thirst is mistaken for hunger. A glass of water can often satisfy that feeling."
-24. Electrolyte Balance with Water: "Especially on keto, drinking enough water helps balance electrolytes, preventing cramps and fatigue."
-
-Instructions for Insights:
--   Contextualized Weight Analysis.
--   Macro & Food Logging Correlation.
--   Workout Log Insights.
--   Hydration Insights (NEW):
-    *   If userProfile.targetWaterIntake is set and logs exist, comment on progress towards the target. "Great job hitting your water goal yesterday!" or "Seeing you're logging water, keep it up! Aiming for that {{{userProfile.targetWaterIntake}}}ml target can make a big difference."
-    *   If userProfile.targetWaterIntake is set but logs are sparse/low, gently encourage. "Remember to keep sipping! Reaching your {{{userProfile.targetWaterIntake}}}ml water target daily supports your keto journey."
-    *   If userProfile.targetWaterIntake is NOT set, encourage setting it. "Staying hydrated is key on keto. Consider setting a daily water goal in your profile!"
-    *   Link hydration to energy, keto flu, or exercise if relevant data exists.
--   Troubleshooting & Guidance (Keto, Fitness, Hydration Tips).
--   Motivational Messages: Celebrate milestones (diet, weight, workouts, hydration). Reinforce positive habits.
--   Handling Missing Data: Encourage profile updates and consistent logging in all areas (food, weight, workouts, water).
--   Persona: Ath - Positive, uplifting, concise.
--   Prioritization: Pick the most relevant points. Try to connect diet, exercise, and hydration insights.
-
-Output Format: Ensure your response strictly adheres to the JSON output schema.
-`,
+    Now, generate the single most useful insight for {{{userProfile.displayName}}} right now.
+  `,
 });
 
 const generateDashboardInsightsFlow = ai.defineFlow(
   {
     name: 'generateDashboardInsightsFlow',
-    inputSchema: GenerateDashboardInsightsInputSchema, 
-    outputSchema: GenerateDashboardInsightsOutputSchema,
+    inputSchema: GenerateDashboardInsightsInputSchema,
+    outputSchema: z.string(),
   },
   async (input) => {
     try {
-      const {output} = await prompt(input);
+      const { output } = await prompt(input);
       if (!output) {
-        console.warn("[AI Flow - generateDashboardInsightsFlow] AI returned a falsy output. Using fallback.");
-        return {
-          mainHighlight: "Welcome to MeatHead! Log meals, weight, water, and workouts to see personalized insights here.",
-          detailedInsights: [
-              "Update your profile with your current weight, target weight, activity level, and water target for more tailored advice.",
-              "Consistent logging of food, weight, water, and workouts is key to understanding your progress!"
-          ],
-        };
+        console.warn("[AI Flow] AI returned a falsy output. Using fallback.");
+        return "Log your meals to see personalized insights from Coach Ath here.";
       }
       return output;
     } catch (error) {
-      console.error("[AI Flow - generateDashboardInsightsFlow] Error calling AI prompt:", error);
-      return {
-        mainHighlight: "Having trouble reaching Ath right now. Let's focus on basics!",
-        detailedInsights: [
-            "Log your meals, weight, water, and workouts consistently to track your progress.",
-            "Ensure your profile details are up-to-date for the best experience.",
-            "We'll try to get Ath's insights for you a bit later!"
-        ],
-      };
+      console.error("[AI Flow] Error calling AI prompt:", error);
+      return "Having trouble reaching Ath right now. Let's focus on the plan!";
     }
   }
 );
-
-    

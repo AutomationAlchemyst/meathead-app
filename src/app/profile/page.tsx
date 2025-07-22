@@ -4,6 +4,7 @@ import ProfileForm from '@/components/profile/ProfileForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getUserProfile } from '@/actions/user';
 import { auth } from '@/lib/firebase'; // We need a way to get current user server-side or pass UID
+import { useAuth } from '@/contexts/AuthContext';
 import { redirect } from 'next/navigation';
 import type { User } from 'firebase/auth';
 

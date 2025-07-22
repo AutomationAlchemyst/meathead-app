@@ -1,20 +1,19 @@
-
 'use client';
 
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter, usePathname } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { Skeleton } from "@/components/ui/skeleton";
-import NotificationManager from '@/components/notifications/NotificationManager'; // Added import
+import NotificationManager from '@/components/notifications/NotificationManager';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
+// The skeleton component remains a good fallback for the loading state.
 function AppLayoutSkeleton() {
-  console.log('[AppLayoutSkeleton] Rendering');
   return (
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -31,47 +30,46 @@ function AppLayoutSkeleton() {
           <Skeleton className="h-40 w-full" />
         </div>
       </main>
-      {/* Footer skeleton removed as AppLayout will no longer render a footer */}
     </div>
   );
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, loading, authCheckCompleted } = useAuth();
+  // --- THE FIX ---
+  // We now only need 'user' and 'loading' from our streamlined AuthContext.
+  const { user, loading } = useAuth();
   const router = useRouter();
-
-  console.log(`[AppLayout] Render - user: ${user?.uid}, loading: ${loading}, authCheckCompleted: ${authCheckCompleted}`);
+  const pathname = usePathname();
 
   useEffect(() => {
-    console.log(`[AppLayout] useEffect - user: ${user?.uid}, loading: ${loading}, authCheckCompleted: ${authCheckCompleted}`);
-    if (authCheckCompleted && !loading && !user) {
-      console.log('[AppLayout] useEffect: Conditions met. Attempting to redirect to /login');
+    // This logic is now simpler and more reliable.
+    // If loading is finished and there is still no user, redirect to login.
+    // We also check to make sure we're not already on a public page like /login.
+    if (!loading && !user && pathname !== '/login' && pathname !== '/register') {
       router.replace('/login');
-    } else {
-       console.log('[AppLayout] useEffect: Conditions NOT met for redirect to /login.');
     }
-  }, [user, loading, authCheckCompleted, router]);
+  }, [user, loading, router, pathname]);
 
-  if (!authCheckCompleted || loading) {
-    console.log('[AppLayout] Rendering: Auth check not complete OR loading is true. Showing AppLayoutSkeleton.');
+  // The main condition is now much simpler. Our AuthProvider already shows a
+  // full-page loader. This skeleton is a secondary fallback for the layout itself.
+  if (loading) {
     return <AppLayoutSkeleton />;
   }
 
+  // If we're done loading but there's no user, the useEffect above will handle
+  // the redirect. We can show the skeleton while that happens to prevent flashes of content.
   if (!user) {
-    console.log('[AppLayout] Rendering: Auth check complete, not loading, NO user. Showing AppLayoutSkeleton (while useEffect redirects).');
-    // Render skeleton or null here because NotificationManager shouldn't run if no user
-    return <AppLayoutSkeleton />; 
+    return <AppLayoutSkeleton />;
   }
 
-  console.log('[AppLayout] Rendering: Auth checks passed. Rendering children.');
+  // If loading is done and we have a user, render the full application layout.
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-1">
         {children}
       </main>
-      <NotificationManager /> {/* Added NotificationManager */}
-      {/* Footer removed from AppLayout. The global footer will come from RootLayout in src/app/layout.tsx */}
+      <NotificationManager />
     </div>
   );
 }
