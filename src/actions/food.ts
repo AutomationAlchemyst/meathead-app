@@ -1,17 +1,16 @@
 'use server';
 
 import { db } from '@/lib/firebase';
+// --- THE FIX ---
+// We've removed the unused 'updateUserStreak' import and other unnecessary imports.
 import { collection, query, where, getDocs, Timestamp, doc, updateDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
 import type { FoodLog } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { updateUserStreak } from './user';
-
 
 export async function addMultipleFoodLogs(
-  // The input type is now any, as the date will be serialized from the client.
   userId: string,
-  foodItems: any[] 
+  foodItems: any[] // Expecting plain objects from the client
 ): Promise<{ success?: boolean; error?: string }> {
   if (!userId) {
     return { error: "User not authenticated." };
@@ -26,22 +25,18 @@ export async function addMultipleFoodLogs(
 
     for (const item of foodItems) {
       const newLogRef = doc(foodLogsRef);
-      
-      // --- IMPROVEMENT ---
-      // We now convert the simple Date object received from the client
-      // into a proper Firebase Timestamp right here on the server.
-      const logData = {
+      // We convert the plain Date object from the client to a Firestore Timestamp here.
+      const logDataWithTimestamp = {
         ...item,
         userId,
-        loggedAt: Timestamp.fromDate(new Date(item.loggedAt)) // Convert serialized date back to Timestamp
+        loggedAt: Timestamp.fromDate(new Date(item.loggedAt))
       };
-      
-      batch.set(newLogRef, logData);
+      batch.set(newLogRef, logDataWithTimestamp);
     }
 
     await batch.commit();
 
-    await updateUserStreak(userId);
+    // The streak logic is now handled entirely on the client-side.
     
     revalidatePath('/food-logging');
     revalidatePath('/dashboard');
@@ -53,7 +48,6 @@ export async function addMultipleFoodLogs(
   }
 }
 
-// ... (The rest of your file remains the same)
 
 export async function getTodaysFoodLogs(userId: string): Promise<FoodLog[]> {
   if (!userId) return [];

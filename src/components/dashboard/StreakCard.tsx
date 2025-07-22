@@ -5,11 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { Flame } from 'lucide-react';
 
-// --- THE FIX ---
-// We are ensuring this is a "named export".
 export const StreakCard = () => {
   const { userProfile, loading: authLoading } = useAuth();
-
   const currentStreak = userProfile?.currentStreak || 0;
 
   if (authLoading) {
