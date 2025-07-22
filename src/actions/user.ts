@@ -1,16 +1,14 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-// --- IMPROVEMENT ---
-// We've removed the unused imports related to the old streak function.
 import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-
 import type { UserProfile, ActivityLevel } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
 const UserProfileUpdateSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters.").optional().or(z.literal('')),
+  myWhy: z.string().max(500, "Your 'Why' cannot be more than 500 characters.").optional().or(z.literal('')), // Added myWhy validation
   currentWeight: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().positive("Weight must be a positive number.").optional().nullable()
@@ -19,7 +17,8 @@ const UserProfileUpdateSchema = z.object({
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().positive("Target weight must be a positive number.").optional().nullable()
   ),
-  activityLevel: z.enum(['sedentary', 'light', 'moderate', 'very'] as [ActivityLevel, ...ActivityLevel[]]).optional().nullable(),
+  // Corrected the enum to match the ActivityLevel type
+  activityLevel: z.enum(['sedentary', 'lightlyActive', 'active', 'veryActive'] as [ActivityLevel, ...ActivityLevel[]]).optional().nullable(),
   targetCalories: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
     z.number().int().min(0, "Calories must be a non-negative integer.").optional().nullable()
@@ -80,6 +79,7 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   
   const dataToUpdate: Partial<UserProfile> = {};
   if (parsedData.data.displayName !== undefined) dataToUpdate.displayName = parsedData.data.displayName === '' ? null : parsedData.data.displayName;
+  if (parsedData.data.myWhy !== undefined) dataToUpdate.myWhy = parsedData.data.myWhy === '' ? null : parsedData.data.myWhy; // Added myWhy to the update object
   if (parsedData.data.currentWeight !== undefined) dataToUpdate.currentWeight = parsedData.data.currentWeight;
   if (parsedData.data.targetWeight !== undefined) dataToUpdate.targetWeight = parsedData.data.targetWeight;
   if (parsedData.data.activityLevel !== undefined) dataToUpdate.activityLevel = parsedData.data.activityLevel;
@@ -104,7 +104,3 @@ export async function updateUserProfile(userId: string, formData: FormData) {
     return { error: error.message };
   }
 }
-
-// --- REMOVED ---
-// The old updateUserStreak server action has been deleted from this file.
-// The logic now lives in the client-side utility at src/lib/streakUtils.ts
