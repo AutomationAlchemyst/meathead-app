@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import RegisterForm from '@/components/auth/RegisterForm';
 import { Logo } from '@/components/icons/Logo';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';

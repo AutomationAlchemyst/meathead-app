@@ -14,7 +14,7 @@ import { Dumbbell, AlertCircle, Loader2, Gem, Zap, Sparkles } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import WorkoutPlanSkeleton from '@/components/workout-planner/WorkoutPlanSkeleton';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';

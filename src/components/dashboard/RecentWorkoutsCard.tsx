@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { WorkoutLog } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp, where } from 'firebase/firestore'; // Added 'where' import

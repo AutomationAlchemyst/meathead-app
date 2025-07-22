@@ -1,7 +1,6 @@
-
 import type { Timestamp } from 'firebase/firestore';
 import type { GenerateWorkoutPlanOutput } from '@/ai/schemas/workout-schemas';
-import { z } from 'zod'; // Value import for z here is fine, as this is not a 'use server' file
+import { z } from 'zod';
 
 export type ActivityLevel = 'sedentary' | 'lightlyActive' | 'active' | 'veryActive';
 
@@ -23,6 +22,7 @@ export interface UserProfile {
   journeyStartDate?: Timestamp | null;
   activeWorkoutPlan?: GenerateWorkoutPlanOutput | null;
   targetWaterIntake?: number | null;
+  myWhy?: string; // Added the purpose-driven field
   isAdmin?: boolean;
   isPremium?: boolean; // Added for premium access control
 }
@@ -88,5 +88,3 @@ export const FeedbackSubmissionServerSchema = z.object({
   rating: z.string().min(1, "Rating is required."),
   comments: z.string().min(5, "Comments must be at least 5 characters long.").max(5000, "Comments cannot exceed 5000 characters."),
 });
-
-    

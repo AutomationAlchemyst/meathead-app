@@ -3,7 +3,7 @@
 
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import type { WaterLog } from '@/types';
 // getTodaysWaterLogs server action is no longer directly used by this component for fetching.
 // updateWaterLog and deleteWaterLog server actions are still used.
