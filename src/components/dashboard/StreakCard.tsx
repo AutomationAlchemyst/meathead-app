@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Flame } from 'lucide-react';
@@ -11,30 +11,29 @@ export const StreakCard = () => {
 
   if (authLoading) {
     return (
-      <Card className="shadow-lg">
+      <Card className="h-full flex flex-col">
         <CardHeader className="pb-2">
-          <div className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
-            <Flame className="h-5 w-5 text-muted-foreground" />
-          </div>
+          <Skeleton className="h-5 w-3/4" />
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-1/2 mb-1" />
-          <Skeleton className="h-4 w-3/4" />
+        <CardContent className="flex-grow">
+          <Skeleton className="h-10 w-1/2 mb-1" />
+          <Skeleton className="h-4 w-full" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 via-card to-amber-50">
+    // FIX: Added `h-full` and `flex flex-col` to make the card stretch vertically.
+    <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 via-card to-amber-50">
       <CardHeader className="pb-2">
         <div className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base font-semibold text-amber-800">Current Logging Streak</CardTitle>
           <Flame className={`h-6 w-6 ${currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
         </div>
       </CardHeader>
-      <CardContent>
+      {/* FIX: `flex-grow` allows this content area to expand. */}
+      <CardContent className="flex-grow">
         <div className="text-4xl font-bold text-orange-600">
           {currentStreak}
           <span className="text-2xl text-muted-foreground ml-1">day{currentStreak !== 1 ? 's' : ''}</span>

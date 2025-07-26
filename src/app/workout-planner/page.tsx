@@ -1,8 +1,9 @@
-
 'use client';
 
 import type { ReactElement } from 'react';
 import { useState, useEffect } from 'react';
+// NEW: Import motion and AnimatePresence from framer-motion
+import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '@/components/layout/AppLayout';
 import WorkoutPlanForm from '@/components/workout-planner/WorkoutPlanForm';
 import WorkoutPlanDisplay from '@/components/workout-planner/WorkoutPlanDisplay';
@@ -20,7 +21,29 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
 import { Button } from '@/components/ui/button';
 
-const MAX_FREE_PLAN_GENERATIONS = 1; // Max free AI plan generations per session (simulated)
+// NEW: Define the standard animation variants
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
+
+const MAX_FREE_PLAN_GENERATIONS = 1;
 
 export default function WorkoutPlannerPage(): ReactElement {
   const { user, userProfile, setUserProfile: updateUserProfileInContext, loading: authLoading, isPremium } = useAuth();
@@ -29,15 +52,12 @@ export default function WorkoutPlannerPage(): ReactElement {
   const [initialLoading, setInitialLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-
-  // Freemium simulation state for Plan Generation
   const [generationTrialDaysRemaining, setGenerationTrialDaysRemaining] = useState(0);
   const [monthlyFreePlanGenerationsUsed, setMonthlyFreePlanGenerationsUsed] = useState(0);
   const [generationTrialAvailable, setGenerationTrialAvailable] = useState(true);
 
   const canGenerateNewPlan = isPremium || generationTrialDaysRemaining > 0 || monthlyFreePlanGenerationsUsed < MAX_FREE_PLAN_GENERATIONS;
   const freePlanGenerationsLeft = MAX_FREE_PLAN_GENERATIONS - monthlyFreePlanGenerationsUsed;
-  // Adaptation is stricter: premium or an active (generation) trial. Free generations don't cover adaptation.
   const canAdaptCurrentPlan = isPremium || generationTrialDaysRemaining > 0;
 
 
@@ -188,92 +208,113 @@ export default function WorkoutPlannerPage(): ReactElement {
         </Alert>
       );
     }
-    // If no free generations left and no trial, the form itself will be replaced by UpgradePrompt
     return null; 
   };
 
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          {renderFreemiumHeader()}
+        {/* NEW: This is our main animation container */}
+        <motion.div
+          className="max-w-4xl mx-auto"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={itemVariants}>
+            {renderFreemiumHeader()}
+          </motion.div>
 
           {!canGenerateNewPlan && !isPremium && generationTrialDaysRemaining <= 0 && (
-             <div className="mb-6">
-               <UpgradePrompt
-                   featureName="AI Workout Planner"
-                   message="You've used your free AI plan generation. Upgrade to Premium or start a trial for unlimited personalized workout plans and adaptation!"
-               />
-               {generationTrialAvailable && (
-                   <Button onClick={startGenerationTrial} size="lg" className="w-full mt-4">
-                       <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial for Workout Planner
-                   </Button>
-               )}
-             </div>
-           )}
+              <motion.div variants={itemVariants} className="mb-6">
+                <UpgradePrompt
+                    featureName="AI Workout Planner"
+                    message="You've used your free AI plan generation. Upgrade to Premium or start a trial for unlimited personalized workout plans and adaptation!"
+                />
+                {generationTrialAvailable && (
+                    <Button onClick={startGenerationTrial} size="lg" className="w-full mt-4">
+                        <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial for Workout Planner
+                    </Button>
+                )}
+              </motion.div>
+            )}
 
           {canGenerateNewPlan && (
-            <Card className="shadow-xl mb-8">
-              <CardHeader className="text-center">
-                <Dumbbell className="mx-auto h-12 w-12 text-primary mb-2" />
-                <CardTitle className="text-3xl font-headline text-primary">Personalized Workout Planner</CardTitle>
-                <CardDescription>
-                  Let Coach Ath design your plan. Missed a day? Coach can adapt it too! Your last plan is saved.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <WorkoutPlanForm 
-                    onSubmit={handleGeneratePlan} 
-                    isLoading={isLoading || initialLoading}
-                    canGenerate={canGenerateNewPlan}
-                    freeGenerationsLeft={isPremium || generationTrialDaysRemaining > 0 ? Infinity : freePlanGenerationsLeft}
-                />
-              </CardContent>
-            </Card>
+            <motion.div variants={itemVariants}>
+              <Card className="shadow-xl mb-8">
+                <CardHeader className="text-center">
+                  <Dumbbell className="mx-auto h-12 w-12 text-primary mb-2" />
+                  <CardTitle className="text-3xl font-headline text-primary">Personalized Workout Planner</CardTitle>
+                  <CardDescription>
+                    Let Coach Ath design your plan. Missed a day? Coach can adapt it too! Your last plan is saved.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <WorkoutPlanForm 
+                      onSubmit={handleGeneratePlan} 
+                      isLoading={isLoading || initialLoading}
+                      canGenerate={canGenerateNewPlan}
+                      freeGenerationsLeft={isPremium || generationTrialDaysRemaining > 0 ? Infinity : freePlanGenerationsLeft}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
-        </div>
 
-        {displaySkeleton && <WorkoutPlanSkeleton />}
+          {/* NEW: AnimatePresence for the results */}
+          <AnimatePresence>
+            {displaySkeleton && (
+                <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <WorkoutPlanSkeleton />
+                </motion.div>
+            )}
 
-        {error && !isLoading && !initialLoading && (
-          <Alert variant="destructive" className="mt-8 max-w-4xl mx-auto">
-            <AlertCircle className="h-5 w-5" />
-            <AlertTitle>Oops! An Error Occurred</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+            {error && !isLoading && !initialLoading && (
+                <motion.div key="error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                    <Alert variant="destructive" className="mt-8 max-w-4xl mx-auto">
+                        <AlertCircle className="h-5 w-5" />
+                        <AlertTitle>Oops! An Error Occurred</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                </motion.div>
+            )}
 
-        {workoutPlan && !displaySkeleton && (
-          <div className="mt-8">
-            <WorkoutPlanDisplay 
-              plan={workoutPlan} 
-              onAdaptPlan={handleAdaptPlan}
-              isAdaptingPlan={isLoading}
-              canAdaptPlan={canAdaptCurrentPlan} // Pass the ability to adapt
-            />
-          </div>
-        )}
-        
-        {!workoutPlan && !displaySkeleton && !error && !canGenerateNewPlan && (
-           <Card className="mt-8 max-w-4xl mx-auto shadow-lg">
-             <CardContent className="p-10 text-center">
-                <Dumbbell className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                <p className="text-xl font-medium text-muted-foreground">Upgrade to generate more plans.</p>
-                <p className="text-sm text-muted-foreground">Your free AI plan generation limit is reached.</p>
-             </CardContent>
-           </Card>
-        )}
-         {!workoutPlan && !displaySkeleton && !error && canGenerateNewPlan && (
-           <Card className="mt-8 max-w-4xl mx-auto shadow-lg">
-             <CardContent className="p-10 text-center">
-                <Dumbbell className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                <p className="text-xl font-medium text-muted-foreground">No active workout plan.</p>
-                <p className="text-sm text-muted-foreground">Fill out the form above to generate your personalized plan!</p>
-             </CardContent>
-           </Card>
-        )}
+            {workoutPlan && !displaySkeleton && (
+                <motion.div key="plan" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="mt-8">
+                    <WorkoutPlanDisplay 
+                        plan={workoutPlan} 
+                        onAdaptPlan={handleAdaptPlan}
+                        isAdaptingPlan={isLoading}
+                        canAdaptPlan={canAdaptCurrentPlan}
+                    />
+                </motion.div>
+            )}
+            
+            {!workoutPlan && !displaySkeleton && !error && !canGenerateNewPlan && (
+                <motion.div key="upgrade-prompt" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                    <Card className="mt-8 max-w-4xl mx-auto shadow-lg">
+                        <CardContent className="p-10 text-center">
+                            <Dumbbell className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                            <p className="text-xl font-medium text-muted-foreground">Upgrade to generate more plans.</p>
+                            <p className="text-sm text-muted-foreground">Your free AI plan generation limit is reached.</p>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
+            {!workoutPlan && !displaySkeleton && !error && canGenerateNewPlan && (
+                <motion.div key="no-plan-prompt" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                    <Card className="mt-8 max-w-4xl mx-auto shadow-lg">
+                        <CardContent className="p-10 text-center">
+                            <Dumbbell className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                            <p className="text-xl font-medium text-muted-foreground">No active workout plan.</p>
+                            <p className="text-sm text-muted-foreground">Fill out the form above to generate your personalized plan!</p>
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
     </AppLayout>
   );
 }
-    

@@ -7,10 +7,11 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // Import Textarea
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, UserCircle, Target, Activity, CalendarCheck, CalendarIcon as CalendarLucideIcon, WeightIcon, PlayCircleIcon, Flame, Beef, Wheat, Droplets, Edit3, Info, Droplet, Brain, Quote } from 'lucide-react';
+// FIX: Imported 'Scale' and 'Egg' and removed 'WeightIcon' and 'Droplets' for consistency.
+import { Loader2, UserCircle, Target, Activity, CalendarCheck, CalendarIcon as CalendarLucideIcon, Scale, PlayCircleIcon, Flame, Beef, Wheat, Egg, Edit3, Info, Droplet, Brain, Quote } from 'lucide-react';
 import type { UserProfile, ActivityLevel } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc as firestoreDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -33,7 +34,7 @@ const activityLevels = [
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters.").optional().or(z.literal('')),
-  myWhy: z.string().max(500, "Your 'Why' cannot be more than 500 characters.").optional().nullable(), // --- ADDED ---
+  myWhy: z.string().max(500, "Your 'Why' cannot be more than 500 characters.").optional().nullable(),
   currentWeight: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
     z.number().positive("Current weight must be a positive number.").nullable()
@@ -192,7 +193,7 @@ export default function ProfileForm() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       displayName: '',
-      myWhy: '', // --- ADDED ---
+      myWhy: '',
       currentWeight: null,
       targetWeight: null,
       activityLevel: null,
@@ -222,7 +223,7 @@ export default function ProfileForm() {
 
         const defaultFormValues: ProfileFormValues = {
           displayName: profile.displayName || '',
-          myWhy: profile.myWhy || '', // --- ADDED ---
+          myWhy: profile.myWhy || '',
           currentWeight: profile.currentWeight || null,
           targetWeight: profile.targetWeight || null,
           activityLevel: profile.activityLevel || null,
@@ -243,7 +244,7 @@ export default function ProfileForm() {
         setEstimatedDisplayGoalDate(projection);
 
       } else {
-        form.reset({ displayName: '', myWhy: '', currentWeight: null, targetWeight: null, activityLevel: null, startingWeight: null, journeyStartDate: null, targetWaterIntake: null }); // --- ADDED myWhy ---
+        form.reset({ displayName: '', myWhy: '', currentWeight: null, targetWeight: null, activityLevel: null, startingWeight: null, journeyStartDate: null, targetWaterIntake: null });
         setCalculatedDisplayMacros({ targetCarbs: 20, targetCalories: null, targetProtein: null, targetFat: null });
         setEstimatedDisplayGoalDate("Enter profile details to see estimates.");
       }
@@ -310,7 +311,7 @@ export default function ProfileForm() {
 
     const dataToUpdate: Partial<UserProfile> & { updatedAt?: any } = {};
     dataToUpdate.displayName = data.displayName === '' ? null : (data.displayName || null);
-    dataToUpdate.myWhy = data.myWhy === '' ? null : (data.myWhy || null); // --- ADDED ---
+    dataToUpdate.myWhy = data.myWhy === '' ? null : (data.myWhy || null);
     dataToUpdate.currentWeight = data.currentWeight || null;
     dataToUpdate.targetWeight = data.targetWeight || null;
     dataToUpdate.activityLevel = data.activityLevel || null;
@@ -329,22 +330,22 @@ export default function ProfileForm() {
 
     const initialFormValuesForCompare: ProfileFormValues = {
         displayName: currentBaselineProfile?.displayName || '',
-        myWhy: currentBaselineProfile?.myWhy || '', // --- ADDED ---
+        myWhy: currentBaselineProfile?.myWhy || '',
         currentWeight: currentBaselineProfile?.currentWeight || null,
         targetWeight: currentBaselineProfile?.targetWeight || null,
         activityLevel: currentBaselineProfile?.activityLevel || null,
         startingWeight: currentBaselineProfile?.startingWeight || null,
         targetWaterIntake: currentBaselineProfile?.targetWaterIntake || null,
         journeyStartDate: currentBaselineProfile?.journeyStartDate instanceof Timestamp
-                              ? currentBaselineProfile.journeyStartDate.toDate()
-                              : (currentBaselineProfile?.journeyStartDate && typeof currentBaselineProfile.journeyStartDate === 'string' && isValidDateFn(parseISO(currentBaselineProfile.journeyStartDate)))
-                                ? parseISO(currentBaselineProfile.journeyStartDate)
-                                : (currentBaselineProfile?.journeyStartDate instanceof Date && isValidDateFn(currentBaselineProfile.journeyStartDate))
-                                  ? currentBaselineProfile.journeyStartDate
-                                  : null,
+                                ? currentBaselineProfile.journeyStartDate.toDate()
+                                : (currentBaselineProfile?.journeyStartDate && typeof currentBaselineProfile.journeyStartDate === 'string' && isValidDateFn(parseISO(currentBaselineProfile.journeyStartDate)))
+                                  ? parseISO(currentBaselineProfile.journeyStartDate)
+                                  : (currentBaselineProfile?.journeyStartDate instanceof Date && isValidDateFn(currentBaselineProfile.journeyStartDate))
+                                    ? currentBaselineProfile.journeyStartDate
+                                    : null,
     };
     
-    const fieldsToCompare: (keyof ProfileFormValues)[] = ['displayName', 'myWhy', 'currentWeight', 'targetWeight', 'activityLevel', 'startingWeight', 'targetWaterIntake']; // --- ADDED myWhy ---
+    const fieldsToCompare: (keyof ProfileFormValues)[] = ['displayName', 'myWhy', 'currentWeight', 'targetWeight', 'activityLevel', 'startingWeight', 'targetWaterIntake'];
     for (const key of fieldsToCompare) {
         let formValue = data[key];
         let initialValue = initialFormValuesForCompare[key];
@@ -385,7 +386,7 @@ export default function ProfileForm() {
         createdAt: displayProfile?.createdAt || initialProfileFromContext?.createdAt || Timestamp.now(),
         
         displayName: dataToUpdate.displayName,
-        myWhy: dataToUpdate.myWhy, // --- ADDED ---
+        myWhy: dataToUpdate.myWhy,
         currentWeight: dataToUpdate.currentWeight,
         targetWeight: dataToUpdate.targetWeight,
         activityLevel: dataToUpdate.activityLevel,
@@ -459,7 +460,7 @@ export default function ProfileForm() {
 
   const viewDisplayName = viewProfile?.displayName || user?.email?.split('@')[0] || "User";
   const viewEmail = user?.email || "No email";
-  const viewMyWhy = viewProfile?.myWhy; // --- ADDED ---
+  const viewMyWhy = viewProfile?.myWhy;
 
   const viewStartingWeight = viewProfile?.startingWeight;
   let viewJourneyStartDate: string | null = null;
@@ -505,11 +506,13 @@ export default function ProfileForm() {
       {!editMode ? (
         <>
           <div className="divide-y divide-border">
-            <ProfileDisplayItem label="My 'Why'" value={viewMyWhy} icon={<Quote />} placeholder="What's the real reason you're here?" isBlock={true} /> {/* --- ADDED --- */}
+            <ProfileDisplayItem label="My 'Why'" value={viewMyWhy} icon={<Quote />} placeholder="What's the real reason you're here?" isBlock={true} />
             <ProfileDisplayItem label="Display Name" value={viewProfile?.displayName} icon={<UserCircle />} placeholder="Not set (uses email prefix)" />
-            <ProfileDisplayItem label="Starting Weight" value={viewStartingWeight} icon={<WeightIcon />} unit=" kg" />
+            {/* FIX: Replaced WeightIcon with Scale */}
+            <ProfileDisplayItem label="Starting Weight" value={viewStartingWeight} icon={<Scale />} unit=" kg" />
             <ProfileDisplayItem label="Journey Start Date" value={viewJourneyStartDate} icon={<PlayCircleIcon />} />
-            <ProfileDisplayItem label="Current Weight" value={viewCurrentWeight} icon={<UserCircle />} unit=" kg" />
+            {/* FIX: Replaced UserCircle with Scale */}
+            <ProfileDisplayItem label="Current Weight" value={viewCurrentWeight} icon={<Scale />} unit=" kg" />
             <ProfileDisplayItem label="Target Weight" value={viewTargetWeight} icon={<Target />} unit=" kg" />
             <ProfileDisplayItem label="Activity Level" value={viewActivityLevelLabel} icon={<Activity />} />
             <ProfileDisplayItem label="Daily Water Target" value={viewTargetWaterIntake} icon={<Droplet />} unit=" ml" />
@@ -525,7 +528,8 @@ export default function ProfileForm() {
                     { icon: <Flame className="h-5 w-5 text-red-500 mb-1" />, label: "Calories", value: calculatedDisplayMacros.targetCalories?.toFixed(0) || 'N/A', unit: "kcal" },
                     { icon: <Beef className="h-5 w-5 text-green-500 mb-1" />, label: "Protein", value: calculatedDisplayMacros.targetProtein?.toFixed(0) || 'N/A', unit: "g" },
                     { icon: <Wheat className="h-5 w-5 text-yellow-500 mb-1" />, label: "Carbs", value: calculatedDisplayMacros.targetCarbs?.toFixed(0) || '20', unit: "g" },
-                    { icon: <Droplets className="h-5 w-5 text-blue-500 mb-1" />, label: "Fat", value: calculatedDisplayMacros.targetFat?.toFixed(0) || 'N/A', unit: "g" },
+                    // FIX: Replaced Droplets with Egg
+                    { icon: <Egg className="h-5 w-5 text-blue-500 mb-1" />, label: "Fat", value: calculatedDisplayMacros.targetFat?.toFixed(0) || 'N/A', unit: "g" },
                   ].map(item => (
                     <div key={item.label} className="flex flex-col items-center p-3 bg-background rounded-lg shadow">
                       {item.icon}
@@ -555,7 +559,6 @@ export default function ProfileForm() {
             {form.formState.errors.displayName && <p className="text-sm text-destructive">{form.formState.errors.displayName.message}</p>}
           </div>
           
-          {/* --- ADDED --- */}
           <div className="space-y-2">
             <Label htmlFor="myWhy" className="flex items-center"><Quote className="h-4 w-4 mr-1 text-muted-foreground" />My "Why"</Label>
             <Textarea 
@@ -569,11 +572,11 @@ export default function ProfileForm() {
             <p className="text-sm text-muted-foreground">On the tough days, this is what we'll come back to. What's the real reason you're building this system?</p>
             {form.formState.errors.myWhy && <p className="text-sm text-destructive">{form.formState.errors.myWhy.message}</p>}
           </div>
-          {/* --- END ADDED --- */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="startingWeight" className="flex items-center"><WeightIcon className="h-4 w-4 mr-1 text-muted-foreground" />Starting Weight (kg)</Label>
+              {/* FIX: Replaced WeightIcon with Scale */}
+              <Label htmlFor="startingWeight" className="flex items-center"><Scale className="h-4 w-4 mr-1 text-muted-foreground" />Starting Weight (kg)</Label>
               <Input id="startingWeight" type="number" step="0.1" {...form.register('startingWeight')} placeholder="e.g., 85.0 (Optional)" disabled={isSubmitting} />
               {form.formState.errors.startingWeight && <p className="text-sm text-destructive">{form.formState.errors.startingWeight.message}</p>}
             </div>
@@ -615,7 +618,8 @@ export default function ProfileForm() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="currentWeight" className="flex items-center"><UserCircle className="h-4 w-4 mr-1 text-muted-foreground" />Current Weight (kg)</Label>
+              {/* FIX: Replaced UserCircle with Scale */}
+              <Label htmlFor="currentWeight" className="flex items-center"><Scale className="h-4 w-4 mr-1 text-muted-foreground" />Current Weight (kg)</Label>
               <Input id="currentWeight" type="number" step="0.1" {...form.register('currentWeight')} placeholder="Enter your current weight" disabled={isSubmitting} />
               {form.formState.errors.currentWeight && <p className="text-sm text-destructive">{form.formState.errors.currentWeight.message}</p>}
             </div>
@@ -669,7 +673,8 @@ export default function ProfileForm() {
                     { icon: <Flame className="h-4 w-4 text-red-500" />, label: "Calories", value: calculatedDisplayMacros.targetCalories?.toFixed(0) || 'N/A', unit: "kcal" },
                     { icon: <Beef className="h-4 w-4 text-green-500" />, label: "Protein", value: calculatedDisplayMacros.targetProtein?.toFixed(0) || 'N/A', unit: "g" },
                     { icon: <Wheat className="h-4 w-4 text-yellow-500" />, label: "Carbs", value: calculatedDisplayMacros.targetCarbs?.toFixed(0) || '20', unit: "g" },
-                    { icon: <Droplets className="h-4 w-4 text-blue-500" />, label: "Fat", value: calculatedDisplayMacros.targetFat?.toFixed(0) || 'N/A', unit: "g" },
+                    // FIX: Replaced Droplets with Egg
+                    { icon: <Egg className="h-4 w-4 text-blue-500" />, label: "Fat", value: calculatedDisplayMacros.targetFat?.toFixed(0) || 'N/A', unit: "g" },
                   ].map(item => (
                     <div key={item.label} className="flex flex-col items-center p-2 bg-background/70 rounded shadow-sm">
                       {item.icon}

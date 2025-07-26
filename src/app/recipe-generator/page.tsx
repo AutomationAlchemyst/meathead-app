@@ -1,8 +1,9 @@
-
 'use client';
 
 import type { ReactElement } from 'react';
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
+// NEW: Import motion from framer-motion
+import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react'; // Replaced Chili with Flame, added Gem, Zap
+import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -29,6 +30,28 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { FoodLog } from '@/types';
 import AdaptedRecipeDisplay from '@/components/recipe-generator/AdaptedRecipeDisplay';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
+
+// NEW: Define the standard animation variants
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
 
 
 const dietaryPreferences = ["Keto", "Keto Dairy-Free", "Keto Nut-Free", "Keto Vegetarian", "Low-Carb General"] as const;
@@ -150,7 +173,7 @@ function GeneratedRecipeDisplay({ recipe, onLogRecipe, isLoggingRecipe, recipeSo
   );
 }
 
-function RecipeGeneratorSkeleton() { // Skeleton for generation
+function RecipeGeneratorSkeleton() {
   return (
     <Card className="mt-8 shadow-xl">
       <CardHeader className="bg-primary/10 p-6 rounded-t-lg">
@@ -196,7 +219,7 @@ function RecipeGeneratorSkeleton() { // Skeleton for generation
   );
 }
 
-function RecipeAdaptationSkeleton() { // Skeleton for adaptation
+function RecipeAdaptationSkeleton() {
   return (
     <Card className="mt-8 shadow-xl">
       <CardHeader className="bg-secondary/10 p-6 rounded-t-lg">
@@ -235,8 +258,6 @@ const MAX_FREE_GENERATIONS = 3;
 export default function RecipeGeneratorPage() {
   const { user, userProfile, loading: authLoading, isPremium } = useAuth();
   const { toast } = useToast();
-
-  // State for "Generate New Recipe" Tab
   const [generatedRecipe, setGeneratedRecipe] = useState<GenerateDetailedRecipeOutput | null>(null);
   const [isLoadingGeneration, setIsLoadingGeneration] = useState(false);
   const [isLoggingGeneratedRecipe, setIsLoggingGeneratedRecipe] = useState(false);
@@ -251,8 +272,6 @@ export default function RecipeGeneratorPage() {
     ensureHalal: false,
     spiceLevel: "Any", 
   });
-
-  // State for "Adapt Existing Recipe" Tab
   const [adaptedRecipeOutput, setAdaptedRecipeOutput] = useState<AdaptRecipeOutput | null>(null);
   const [isLoadingAdaptation, setIsLoadingAdaptation] = useState(false);
   const [isLoggingAdaptedRecipe, setIsLoggingAdaptedRecipe] = useState(false); 
@@ -265,8 +284,6 @@ export default function RecipeGeneratorPage() {
   const [specificIngredientToSubstitute, setSpecificIngredientToSubstitute] = useState('');
   const [preferredSubstitution, setPreferredSubstitution] = useState('');
   const [additionalDietaryRestrictions, setAdditionalDietaryRestrictions] = useState('');
-
-  // State for "What's In My Fridge?" Tab
   const [fromIngredientsRecipe, setFromIngredientsRecipe] = useState<GenerateRecipeFromIngredientsOutput | null>(null);
   const [isLoadingFromIngredients, setIsLoadingFromIngredients] = useState(false);
   const [isLoggingFromIngredientsRecipe, setIsLoggingFromIngredientsRecipe] = useState(false);
@@ -278,18 +295,12 @@ export default function RecipeGeneratorPage() {
     servings: 2,
     mealType: "Any",
   });
-
-  // Freemium simulation state
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
   const [monthlyFreeGenerationsUsed, setMonthlyFreeGenerationsUsed] = useState(0);
   const [trialAvailable, setTrialAvailable] = useState(true); 
 
   const canUseFeature = isPremium || trialDaysRemaining > 0 || monthlyFreeGenerationsUsed < MAX_FREE_GENERATIONS;
   const freeGenerationsLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
-
-  console.log(`[RecipeGeneratorPage] Render. Auth: user: ${user?.uid}, authLoading: ${authLoading}, isPremium (from context): ${isPremium}`);
-  console.log(`[RecipeGeneratorPage] Freemium state: trialDays: ${trialDaysRemaining}, usedGenerations: ${monthlyFreeGenerationsUsed}, trialAvailable: ${trialAvailable}, canUseFeature: ${canUseFeature}`);
-
 
   const handleGenerationInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -302,7 +313,7 @@ export default function RecipeGeneratorPage() {
     const { name, value } = e.target;
     setGenerationFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
   };
-   const handleGenerationCheckboxChange = (name: keyof GenerateDetailedRecipeInput) => (checked: boolean) => {
+    const handleGenerationCheckboxChange = (name: keyof GenerateDetailedRecipeInput) => (checked: boolean) => {
     setGenerationFormState(prev => ({ ...prev, [name]: checked }));
   };
 
@@ -313,7 +324,7 @@ export default function RecipeGeneratorPage() {
   const handleAdaptationSelectChange = (name: keyof AdaptRecipeInput) => (value: string) => {
     setAdaptationFormState(prev => ({ ...prev, [name]: value as AdaptationGoalValue }));
   };
-   const handleAdaptationNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAdaptationNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAdaptationFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
   };
@@ -333,7 +344,6 @@ export default function RecipeGeneratorPage() {
   const incrementUsageAndCheckLimit = () => {
     if (!isPremium && trialDaysRemaining <= 0) {
       setMonthlyFreeGenerationsUsed(prev => {
-        console.log(`[RecipeGeneratorPage] Incrementing free generations used. Old: ${prev}, New: ${prev + 1}`);
         return prev + 1;
       });
     }
@@ -341,7 +351,6 @@ export default function RecipeGeneratorPage() {
 
   const handleGenerateRecipe = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`[RecipeGeneratorPage] handleGenerateRecipe called. canUseFeature: ${canUseFeature}, isPremium: ${isPremium}, trialDaysRemaining: ${trialDaysRemaining}`);
     if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
       toast({ title: "Limit Reached", description: "You've used all your free generations. Upgrade to Premium or start a trial for unlimited access!", variant: "destructive" });
       return;
@@ -369,7 +378,6 @@ export default function RecipeGeneratorPage() {
       const recipe = await generateDetailedRecipe(inputForAI);
       setGeneratedRecipe(recipe);
     } catch (e: any) {
-      console.error("Error generating detailed recipe:", e);
       const errorMessage = e.message || "Failed to generate recipe. Chef Ath might be busy. Please try again.";
       setGenerationError(errorMessage);
       toast({ title: 'Recipe Generation Failed', description: errorMessage, variant: 'destructive' });
@@ -406,7 +414,6 @@ export default function RecipeGeneratorPage() {
       await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
       toast({ title: "Meal Logged!", description: `${recipeToLog.recipeName} (1 serving) added to your food log.` });
     } catch (error: any) {
-      console.error("Error logging recipe to Firestore:", error);
       toast({ title: "Logging Failed", description: error.message || "Could not log this meal.", variant: "destructive" });
     } finally {
       if (source === 'generate') setIsLoggingGeneratedRecipe(false);
@@ -434,7 +441,6 @@ export default function RecipeGeneratorPage() {
       await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
       toast({ title: "Meal Logged!", description: `${recipeName} (1 serving of adapted recipe) added to your food log.` });
     } catch (error: any) {
-      console.error("Error logging adapted recipe:", error);
       toast({ title: "Logging Failed", description: error.message || "Could not log this adapted meal.", variant: "destructive" });
     } finally {
       setIsLoggingAdaptedRecipe(false);
@@ -444,8 +450,7 @@ export default function RecipeGeneratorPage() {
 
   const handleAdaptRecipe = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`[RecipeGeneratorPage] handleAdaptRecipe called. canUseFeature: ${canUseFeature}, isPremium: ${isPremium}, trialDaysRemaining: ${trialDaysRemaining}`);
-     if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
+      if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
       toast({ title: "Limit Reached", description: "You've used all your free adaptations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
@@ -475,7 +480,6 @@ export default function RecipeGeneratorPage() {
       const result = await adaptRecipe(inputForAI);
       setAdaptedRecipeOutput(result);
     } catch (e: any) {
-      console.error("Error adapting recipe:", e);
       const errorMessage = e.message || "Failed to adapt recipe. Chef Ath might be stumped. Please check the recipe and try again.";
       setAdaptationError(errorMessage);
       toast({ title: 'Recipe Adaptation Failed', description: errorMessage, variant: 'destructive' });
@@ -486,8 +490,7 @@ export default function RecipeGeneratorPage() {
 
   const handleGenerateFromIngredients = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`[RecipeGeneratorPage] handleGenerateFromIngredients called. canUseFeature: ${canUseFeature}, isPremium: ${isPremium}, trialDaysRemaining: ${trialDaysRemaining}`);
-     if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
+      if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
       toast({ title: "Limit Reached", description: "You've used all your free 'Fridge' generations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
@@ -525,7 +528,6 @@ export default function RecipeGeneratorPage() {
       const recipe = await generateRecipeFromIngredients(inputForAI);
       setFromIngredientsRecipe(recipe);
     } catch (e: any) {
-      console.error("Error generating recipe from ingredients:", e);
       const errorMessage = e.message || "Failed to generate recipe from your ingredients. Chef Ath might be busy. Please try again.";
       setFromIngredientsError(errorMessage);
       toast({ title: 'Recipe Generation Failed', description: errorMessage, variant: 'destructive' });
@@ -535,7 +537,6 @@ export default function RecipeGeneratorPage() {
   };
 
   const startTrial = () => {
-    console.log("[RecipeGeneratorPage] Starting 3-day trial.");
     setTrialDaysRemaining(3); 
     setTrialAvailable(false); 
     toast({ title: "Premium Trial Started!", description: "Enjoy full access to Recipe Genie for 3 days." });
@@ -545,8 +546,7 @@ export default function RecipeGeneratorPage() {
   const isLoadingAnyFeature = isLoadingGeneration || isLoadingAdaptation || isLoadingFromIngredients;
 
   if (authLoading) {
-     console.log("[RecipeGeneratorPage] Auth loading. Rendering full page skeleton.");
-     return (
+      return (
       <AppLayout>
         <div className="container mx-auto py-8 px-4 flex justify-center items-center h-[calc(100vh-150px)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -557,7 +557,6 @@ export default function RecipeGeneratorPage() {
   
   const renderFreemiumHeader = () => {
     if (isPremium) {
-      console.log("[RecipeGeneratorPage] Render Freemium Header: User IS Premium.");
       return (
         <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-green-50 border-green-300 text-green-700">
           <Gem className="h-5 w-5 text-green-600" />
@@ -567,7 +566,6 @@ export default function RecipeGeneratorPage() {
       );
     }
     if (trialDaysRemaining > 0) {
-      console.log(`[RecipeGeneratorPage] Render Freemium Header: Trial active, ${trialDaysRemaining} days remaining.`);
       return (
         <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-blue-50 border-blue-300 text-blue-700">
           <Zap className="h-5 w-5 text-blue-600" />
@@ -577,7 +575,6 @@ export default function RecipeGeneratorPage() {
       );
     }
     if (freeGenerationsLeft > 0) {
-      console.log(`[RecipeGeneratorPage] Render Freemium Header: Free tier, ${freeGenerationsLeft} generations left.`);
       return (
         <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-orange-50 border-orange-300 text-orange-700">
           <Info className="h-5 w-5 text-orange-600" />
@@ -586,7 +583,6 @@ export default function RecipeGeneratorPage() {
         </Alert>
       );
     }
-    console.log("[RecipeGeneratorPage] Render Freemium Header: No specific header (likely limits reached, no trial).");
     return null; 
   };
 
@@ -594,355 +590,377 @@ export default function RecipeGeneratorPage() {
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4">
-        {renderFreemiumHeader()}
+        {/* NEW: Wrap main content in motion.div */}
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+            <motion.div variants={itemVariants}>
+                {renderFreemiumHeader()}
+            </motion.div>
 
-        {!canUseFeature && !isPremium && trialDaysRemaining <= 0 && (
-           console.log("[RecipeGeneratorPage] Render: CANNOT use feature, NOT premium, NO trial. Showing UpgradePrompt and Trial Button."),
-          <div className="max-w-3xl mx-auto mb-6">
-            <UpgradePrompt
-                featureName="Recipe Genie"
-                message="You've used all your free AI recipe generations. Upgrade to Premium for unlimited access, or start a free trial!"
-            />
-            {trialAvailable && (
-                <Button onClick={startTrial} size="lg" className="w-full mt-4">
-                    <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial
-                </Button>
-            )}
-          </div>
-        )}
-
-
-        <Tabs defaultValue={currentActiveTabDefault} className="max-w-3xl mx-auto mt-6">
-          <TabsList className="flex flex-wrap w-full h-auto sm:h-10 gap-1 mb-6 p-1 rounded-md bg-muted text-muted-foreground">
-            <TabsTrigger value="generate" className="flex-1 min-w-[150px] sm:flex-auto">
-                <CopyCheck className="hidden sm:inline-block mr-2 h-5 w-5" />Generate New
-            </TabsTrigger>
-            <TabsTrigger value="fridge" className="flex-1 min-w-[150px] sm:flex-auto">
-                <Refrigerator className="hidden sm:inline-block mr-2 h-5 w-5" />What's In My Fridge?
-            </TabsTrigger>
-            <TabsTrigger value="adapt" className="flex-1 min-w-[150px] sm:flex-auto">
-                <GitFork className="hidden sm:inline-block mr-2 h-5 w-5" />Adapt Existing
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="generate">
-            <Card className="shadow-xl">
-              <CardHeader className="text-center">
-                <Utensils className="mx-auto h-12 w-12 text-primary mb-2" />
-                <CardTitle className="text-3xl font-headline text-primary">Chef Ath's Recipe Genie</CardTitle>
-                <CardDescription>
-                  Tell Chef Ath your preferences, and get a custom Keto-focused recipe!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleGenerateRecipe} className="space-y-6">
-                  {/* Form fields for Generate New Recipe */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="dietaryPreference">Dietary Preference</Label>
-                      <Select name="dietaryPreference" value={generationFormState.dietaryPreference} onValueChange={handleGenerationSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
-                        <SelectTrigger id="dietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
-                        <SelectContent>
-                          {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cuisinePreference">Cuisine Preference</Label>
-                      <Input id="cuisinePreference" name="cuisinePreference" placeholder="e.g., Italian, Singaporean Local, Any" value={generationFormState.cuisinePreference || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="mealType">Meal Type</Label>
-                      <Select name="mealType" value={generationFormState.mealType} onValueChange={handleGenerationSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
-                        <SelectTrigger id="mealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
-                        <SelectContent>
-                          {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cookingTimePreference">Cooking Time</Label>
-                      <Select name="cookingTimePreference" value={generationFormState.cookingTimePreference} onValueChange={handleGenerationSelectChange('cookingTimePreference')} disabled={isLoadingAnyFeature || authLoading}>
-                        <SelectTrigger id="cookingTimePreference"><SelectValue placeholder="Select cooking time" /></SelectTrigger>
-                        <SelectContent>
-                          {cookingTimes.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="mainIngredients">Main Ingredients to Feature (comma-separated, optional)</Label>
-                    <Input id="mainIngredients" name="mainIngredients" placeholder="e.g., chicken breast, broccoli, eggs" value={mainIngredients} onChange={(e) => setMainIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="excludedIngredients">Ingredients to Exclude (comma-separated, optional)</Label>
-                    <Input id="excludedIngredients" name="excludedIngredients" placeholder="e.g., nuts, mushrooms" value={excludedIngredients} onChange={(e) => setExcludedIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                  </div>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="spiceLevel" className="flex items-center">
-                            <Flame className="mr-2 h-4 w-4 text-muted-foreground" />
-                            Spice Level
-                        </Label>
-                        <Select name="spiceLevel" value={generationFormState.spiceLevel} onValueChange={handleGenerationSelectChange('spiceLevel')} disabled={isLoadingAnyFeature || authLoading}>
-                            <SelectTrigger id="spiceLevel"><SelectValue placeholder="Select spice level" /></SelectTrigger>
-                            <SelectContent>
-                            {spiceLevels.map(sl => <SelectItem key={sl} value={sl}>{sl}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="servings">Number of Servings</Label>
-                        <Input id="servings" name="servings" type="number" min="1" max="12" value={generationFormState.servings || ''} onChange={handleGenerationNumberInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                        <p className="text-xs text-muted-foreground">Note: Logging will always be for 1 serving's macros.</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 flex items-center">
-                    <Checkbox
-                        id="ensureHalal"
-                        checked={generationFormState.ensureHalal}
-                        onCheckedChange={(checked) => handleGenerationCheckboxChange('ensureHalal')(!!checked)}
-                        disabled={isLoadingAnyFeature || authLoading}
+            {!canUseFeature && !isPremium && trialDaysRemaining <= 0 && (
+                <motion.div variants={itemVariants} className="max-w-3xl mx-auto mb-6">
+                    <UpgradePrompt
+                        featureName="Recipe Genie"
+                        message="You've used all your free AI recipe generations. Upgrade to Premium for unlimited access, or start a free trial!"
                     />
-                    <Label htmlFor="ensureHalal" className="ml-2 font-normal flex items-center cursor-pointer">
-                        <ShieldCheck className="mr-1.5 h-4 w-4 text-muted-foreground" />
-                        Ensure Halal Compliance
-                    </Label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="specificRequests">Other Specific Requests / Notes</Label>
-                    <Textarea id="specificRequests" name="specificRequests" placeholder="e.g., one-pan meal, air fryer friendly, make it Halal, use local herbs" value={generationFormState.specificRequests || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                    {isLoadingGeneration ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                    {isLoadingGeneration ? 'Chef Ath is Thinking...' : 'Generate My Recipe!'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-            {isLoadingGeneration && <RecipeGeneratorSkeleton />}
-            {generationError && !isLoadingGeneration && (
-              <Alert variant="destructive" className="mt-8">
-                <AlertCircle className="h-5 w-5" />
-                <AlertTitle>Oops! Something went wrong with generation.</AlertTitle>
-                <AlertDescription>{generationError}</AlertDescription>
-              </Alert>
-            )}
-            {generatedRecipe && !isLoadingGeneration && (
-              <GeneratedRecipeDisplay
-                recipe={generatedRecipe}
-                onLogRecipe={(recipe) => handleLogRecipe(recipe, 'generate')}
-                isLoggingRecipe={isLoggingGeneratedRecipe}
-                recipeSource="generate"
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="fridge">
-            <Card className="shadow-xl">
-              <CardHeader className="text-center">
-                <Refrigerator className="mx-auto h-12 w-12 text-primary mb-2" />
-                <CardTitle className="text-3xl font-headline text-primary">What's In My Fridge?</CardTitle>
-                <CardDescription>
-                  List your available ingredients, and Chef Ath will whip up a Keto recipe!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleGenerateFromIngredients} className="space-y-6">
-                  {/* Form fields for What's In My Fridge? */}
-                   <div className="space-y-2">
-                    <Label htmlFor="availableFridgeIngredients">Available Ingredients (comma-separated)</Label>
-                    <Textarea
-                        id="availableFridgeIngredients"
-                        name="availableFridgeIngredients"
-                        placeholder="e.g., chicken thighs, spinach, eggs, cheese, olive oil"
-                        value={availableFridgeIngredients}
-                        onChange={(e) => setAvailableFridgeIngredients(e.target.value)}
-                        rows={4}
-                        disabled={isLoadingAnyFeature || authLoading}
-                        required
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="fridgeDietaryPreference">Dietary Preference</Label>
-                      <Select name="dietaryPreference" value={fromIngredientsFormState.dietaryPreference} onValueChange={handleFromIngredientsSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
-                        <SelectTrigger id="fridgeDietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
-                        <SelectContent>
-                          {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fridgeCuisinePreference">Cuisine Preference</Label>
-                      <Input id="fridgeCuisinePreference" name="cuisinePreference" placeholder="e.g., Quick & Easy, Asian, Any" value={fromIngredientsFormState.cuisinePreference || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div className="space-y-2">
-                      <Label htmlFor="fridgeMealType">Meal Type</Label>
-                      <Select name="mealType" value={fromIngredientsFormState.mealType} onValueChange={handleFromIngredientsSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
-                        <SelectTrigger id="fridgeMealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
-                        <SelectContent>
-                          {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fridgeServings">Number of Servings</Label>
-                      <Input id="fridgeServings" name="servings" type="number" min="1" max="12" value={fromIngredientsFormState.servings || ''} onChange={handleFromIngredientsNumberInputChange} disabled={isLoadingAnyFeature || authLoading}/>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="excludedFridgeIngredients">Ingredients to Strictly Exclude (comma-separated, optional)</Label>
-                    <Input id="excludedFridgeIngredients" name="excludedFridgeIngredients" placeholder="e.g., nuts, mushrooms, dairy" value={excludedFridgeIngredients} onChange={(e) => setExcludedFridgeIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fridgeSpecificRequests">Other Specific Requests / Notes</Label>
-                    <Textarea id="fridgeSpecificRequests" name="specificRequests" placeholder="e.g., quick meal, spicy, use air fryer" value={fromIngredientsFormState.specificRequests || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                    {isLoadingFromIngredients ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                    {isLoadingFromIngredients ? 'Chef Ath is Inventing...' : 'Generate Recipe From My Ingredients!'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-            {isLoadingFromIngredients && <RecipeGeneratorSkeleton />}
-            {fromIngredientsError && !isLoadingFromIngredients && (
-              <Alert variant="destructive" className="mt-8">
-                <AlertCircle className="h-5 w-5" />
-                <AlertTitle>Oops! Something went wrong with this generation.</AlertTitle>
-                <AlertDescription>{fromIngredientsError}</AlertDescription>
-              </Alert>
-            )}
-            {fromIngredientsRecipe && !isLoadingFromIngredients && (
-              <GeneratedRecipeDisplay
-                recipe={fromIngredientsRecipe}
-                onLogRecipe={(recipe) => handleLogRecipe(recipe, 'fridge')}
-                isLoggingRecipe={isLoggingFromIngredientsRecipe}
-                recipeSource="fridge"
-              />
-            )}
-          </TabsContent>
-
-          <TabsContent value="adapt">
-            <Card className="shadow-xl">
-              <CardHeader className="text-center">
-                <GitFork className="mx-auto h-12 w-12 text-secondary mb-2" />
-                <CardTitle className="text-3xl font-headline text-secondary">Adapt Existing Recipe</CardTitle>
-                <CardDescription>
-                  Have a recipe? Let Chef Ath adapt it for your needs (Keto, Halal, etc.) or suggest substitutions!
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAdaptRecipe} className="space-y-6">
-                    {/* Form fields for Adapt Existing Recipe */}
-                    <div className="space-y-2">
-                        <Label htmlFor="originalRecipeText">Original Recipe Text</Label>
-                        <Textarea
-                            id="originalRecipeText"
-                            name="originalRecipeText"
-                            placeholder="Paste your full recipe here (ingredients and instructions)..."
-                            value={originalRecipeText}
-                            onChange={(e) => setOriginalRecipeText(e.target.value)}
-                            rows={10}
-                            disabled={isLoadingAnyFeature || authLoading}
-                            required
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="adaptationGoal">Adaptation Goal</Label>
-                            <Select
-                                name="adaptationGoal"
-                                value={adaptationFormState.adaptationGoal}
-                                onValueChange={handleAdaptationSelectChange('adaptationGoal')}
-                                disabled={isLoadingAnyFeature || authLoading}
-                            >
-                                <SelectTrigger id="adaptationGoal"><SelectValue placeholder="Select adaptation goal" /></SelectTrigger>
-                                <SelectContent>
-                                {adaptationGoals.map(goal => <SelectItem key={goal.value} value={goal.value}>{goal.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="adaptServings">Desired Servings (for adapted recipe)</Label>
-                            <Input
-                                id="adaptServings"
-                                name="servings"
-                                type="number"
-                                min="1" max="12"
-                                value={adaptationFormState.servings || ''}
-                                onChange={handleAdaptationNumberInputChange}
-                                disabled={isLoadingAnyFeature || authLoading}
-                            />
-                        </div>
-                    </div>
-                    {adaptationFormState.adaptationGoal === "suggestSubstitutions" && (
-                        <div className="space-y-2">
-                            <Label htmlFor="specificIngredientToSubstitute">Ingredient to Substitute</Label>
-                            <Input
-                                id="specificIngredientToSubstitute"
-                                name="specificIngredientToSubstitute"
-                                placeholder="e.g., all-purpose flour, sugar"
-                                value={specificIngredientToSubstitute}
-                                onChange={(e) => setSpecificIngredientToSubstitute(e.target.value)}
-                                disabled={isLoadingAnyFeature || authLoading}
-                            />
-                        </div>
+                    {trialAvailable && (
+                        <Button onClick={startTrial} size="lg" className="w-full mt-4">
+                            <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial
+                        </Button>
                     )}
-                    <div className="space-y-2">
-                        <Label htmlFor="preferredSubstitution">Preferred Substitution (Optional)</Label>
-                        <Input
-                            id="preferredSubstitution"
-                            name="preferredSubstitution"
-                            placeholder="e.g., almond flour, erythritol"
-                            value={preferredSubstitution}
-                            onChange={(e) => setPreferredSubstitution(e.target.value)}
-                            disabled={isLoadingAnyFeature || authLoading}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="additionalDietaryRestrictions">Additional Dietary Restrictions (comma-separated, optional)</Label>
-                        <Input
-                            id="additionalDietaryRestrictions"
-                            name="additionalDietaryRestrictions"
-                            placeholder="e.g., dairy-free, nut-free"
-                            value={additionalDietaryRestrictions}
-                            onChange={(e) => setAdditionalDietaryRestrictions(e.target.value)}
-                            disabled={isLoadingAnyFeature || authLoading}
-                        />
-                    </div>
-                  <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                    {isLoadingAdaptation ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                    {isLoadingAdaptation ? 'Chef Ath is Adapting...' : 'Adapt My Recipe!'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-            {isLoadingAdaptation && <RecipeAdaptationSkeleton />}
-            {adaptationError && !isLoadingAdaptation && (
-              <Alert variant="destructive" className="mt-8">
-                <AlertCircle className="h-5 w-5" />
-                <AlertTitle>Oops! Something went wrong with adaptation.</AlertTitle>
-                <AlertDescription>{adaptationError}</AlertDescription>
-              </Alert>
+                </motion.div>
             )}
-            {adaptedRecipeOutput && !isLoadingAdaptation && (
-              <AdaptedRecipeDisplay
-                adaptedRecipe={adaptedRecipeOutput}
-                onLogAdaptedRecipe={handleLogAdaptedRecipe}
-                isLoggingAdaptedRecipe={isLoggingAdaptedRecipe}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+
+            <motion.div variants={itemVariants}>
+                <Tabs defaultValue={currentActiveTabDefault} className="max-w-3xl mx-auto mt-6">
+                <TabsList className="flex flex-wrap w-full h-auto sm:h-10 gap-1 mb-6 p-1 rounded-md bg-muted text-muted-foreground">
+                    <TabsTrigger value="generate" className="flex-1 min-w-[150px] sm:flex-auto">
+                        <CopyCheck className="hidden sm:inline-block mr-2 h-5 w-5" />Generate New
+                    </TabsTrigger>
+                    <TabsTrigger value="fridge" className="flex-1 min-w-[150px] sm:flex-auto">
+                        <Refrigerator className="hidden sm:inline-block mr-2 h-5 w-5" />What's In My Fridge?
+                    </TabsTrigger>
+                    <TabsTrigger value="adapt" className="flex-1 min-w-[150px] sm:flex-auto">
+                        <GitFork className="hidden sm:inline-block mr-2 h-5 w-5" />Adapt Existing
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="generate">
+                    <Card className="shadow-xl">
+                    <CardHeader className="text-center">
+                        <Utensils className="mx-auto h-12 w-12 text-primary mb-2" />
+                        <CardTitle className="text-3xl font-headline text-primary">Chef Ath's Recipe Genie</CardTitle>
+                        <CardDescription>
+                            Tell Chef Ath your preferences, and get a custom Keto-focused recipe!
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleGenerateRecipe} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="dietaryPreference">Dietary Preference</Label>
+                                <Select name="dietaryPreference" value={generationFormState.dietaryPreference} onValueChange={handleGenerationSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
+                                <SelectTrigger id="dietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
+                                <SelectContent>
+                                    {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="cuisinePreference">Cuisine Preference</Label>
+                                <Input id="cuisinePreference" name="cuisinePreference" placeholder="e.g., Italian, Singaporean Local, Any" value={generationFormState.cuisinePreference || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="mealType">Meal Type</Label>
+                                <Select name="mealType" value={generationFormState.mealType} onValueChange={handleGenerationSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
+                                <SelectTrigger id="mealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
+                                <SelectContent>
+                                    {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="cookingTimePreference">Cooking Time</Label>
+                                <Select name="cookingTimePreference" value={generationFormState.cookingTimePreference} onValueChange={handleGenerationSelectChange('cookingTimePreference')} disabled={isLoadingAnyFeature || authLoading}>
+                                <SelectTrigger id="cookingTimePreference"><SelectValue placeholder="Select cooking time" /></SelectTrigger>
+                                <SelectContent>
+                                    {cookingTimes.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
+                                </SelectContent>
+                                </Select>
+                            </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="mainIngredients">Main Ingredients to Feature (comma-separated, optional)</Label>
+                                <Input id="mainIngredients" name="mainIngredients" placeholder="e.g., chicken breast, broccoli, eggs" value={mainIngredients} onChange={(e) => setMainIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="excludedIngredients">Ingredients to Exclude (comma-separated, optional)</Label>
+                                <Input id="excludedIngredients" name="excludedIngredients" placeholder="e.g., nuts, mushrooms" value={excludedIngredients} onChange={(e) => setExcludedIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="spiceLevel" className="flex items-center">
+                                        <Flame className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        Spice Level
+                                    </Label>
+                                    <Select name="spiceLevel" value={generationFormState.spiceLevel} onValueChange={handleGenerationSelectChange('spiceLevel')} disabled={isLoadingAnyFeature || authLoading}>
+                                        <SelectTrigger id="spiceLevel"><SelectValue placeholder="Select spice level" /></SelectTrigger>
+                                        <SelectContent>
+                                        {spiceLevels.map(sl => <SelectItem key={sl} value={sl}>{sl}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="servings">Number of Servings</Label>
+                                    <Input id="servings" name="servings" type="number" min="1" max="12" value={generationFormState.servings || ''} onChange={handleGenerationNumberInputChange} disabled={isLoadingAnyFeature || authLoading} />
+                                    <p className="text-xs text-muted-foreground">Note: Logging will always be for 1 serving's macros.</p>
+                                </div>
+                                </div>
+                            <div className="space-y-2 flex items-center">
+                                <Checkbox
+                                    id="ensureHalal"
+                                    checked={generationFormState.ensureHalal}
+                                    onCheckedChange={(checked) => handleGenerationCheckboxChange('ensureHalal')(!!checked)}
+                                    disabled={isLoadingAnyFeature || authLoading}
+                                />
+                                <Label htmlFor="ensureHalal" className="ml-2 font-normal flex items-center cursor-pointer">
+                                    <ShieldCheck className="mr-1.5 h-4 w-4 text-muted-foreground" />
+                                    Ensure Halal Compliance
+                                </Label>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="specificRequests">Other Specific Requests / Notes</Label>
+                                <Textarea id="specificRequests" name="specificRequests" placeholder="e.g., one-pan meal, air fryer friendly, make it Halal, use local herbs" value={generationFormState.specificRequests || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
+                                {isLoadingGeneration ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
+                                {isLoadingGeneration ? 'Chef Ath is Thinking...' : 'Generate My Recipe!'}
+                            </Button>
+                        </form>
+                    </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="fridge">
+                    <Card className="shadow-xl">
+                    <CardHeader className="text-center">
+                        <Refrigerator className="mx-auto h-12 w-12 text-primary mb-2" />
+                        <CardTitle className="text-3xl font-headline text-primary">What's In My Fridge?</CardTitle>
+                        <CardDescription>
+                            List your available ingredients, and Chef Ath will whip up a Keto recipe!
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleGenerateFromIngredients} className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="availableFridgeIngredients">Available Ingredients (comma-separated)</Label>
+                                <Textarea
+                                    id="availableFridgeIngredients"
+                                    name="availableFridgeIngredients"
+                                    placeholder="e.g., chicken thighs, spinach, eggs, cheese, olive oil"
+                                    value={availableFridgeIngredients}
+                                    onChange={(e) => setAvailableFridgeIngredients(e.target.value)}
+                                    rows={4}
+                                    disabled={isLoadingAnyFeature || authLoading}
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                <Label htmlFor="fridgeDietaryPreference">Dietary Preference</Label>
+                                <Select name="dietaryPreference" value={fromIngredientsFormState.dietaryPreference} onValueChange={handleFromIngredientsSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
+                                    <SelectTrigger id="fridgeDietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
+                                    <SelectContent>
+                                    {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                </div>
+                                <div className="space-y-2">
+                                <Label htmlFor="fridgeCuisinePreference">Cuisine Preference</Label>
+                                <Input id="fridgeCuisinePreference" name="cuisinePreference" placeholder="e.g., Quick & Easy, Asian, Any" value={fromIngredientsFormState.cuisinePreference || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                <Label htmlFor="fridgeMealType">Meal Type</Label>
+                                <Select name="mealType" value={fromIngredientsFormState.mealType} onValueChange={handleFromIngredientsSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
+                                    <SelectTrigger id="fridgeMealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
+                                    <SelectContent>
+                                    {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                </div>
+                                <div className="space-y-2">
+                                <Label htmlFor="fridgeServings">Number of Servings</Label>
+                                <Input id="fridgeServings" name="servings" type="number" min="1" max="12" value={fromIngredientsFormState.servings || ''} onChange={handleFromIngredientsNumberInputChange} disabled={isLoadingAnyFeature || authLoading}/>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="excludedFridgeIngredients">Ingredients to Strictly Exclude (comma-separated, optional)</Label>
+                                <Input id="excludedFridgeIngredients" name="excludedFridgeIngredients" placeholder="e.g., nuts, mushrooms, dairy" value={excludedFridgeIngredients} onChange={(e) => setExcludedFridgeIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="fridgeSpecificRequests">Other Specific Requests / Notes</Label>
+                                <Textarea id="fridgeSpecificRequests" name="specificRequests" placeholder="e.g., quick meal, spicy, use air fryer" value={fromIngredientsFormState.specificRequests || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
+                                {isLoadingFromIngredients ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
+                                {isLoadingFromIngredients ? 'Chef Ath is Inventing...' : 'Generate Recipe From My Ingredients!'}
+                            </Button>
+                        </form>
+                    </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="adapt">
+                    <Card className="shadow-xl">
+                    <CardHeader className="text-center">
+                        <GitFork className="mx-auto h-12 w-12 text-secondary mb-2" />
+                        <CardTitle className="text-3xl font-headline text-secondary">Adapt Existing Recipe</CardTitle>
+                        <CardDescription>
+                            Have a recipe? Let Chef Ath adapt it for your needs (Keto, Halal, etc.) or suggest substitutions!
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleAdaptRecipe} className="space-y-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="originalRecipeText">Original Recipe Text</Label>
+                                <Textarea
+                                    id="originalRecipeText"
+                                    name="originalRecipeText"
+                                    placeholder="Paste your full recipe here (ingredients and instructions)..."
+                                    value={originalRecipeText}
+                                    onChange={(e) => setOriginalRecipeText(e.target.value)}
+                                    rows={10}
+                                    disabled={isLoadingAnyFeature || authLoading}
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="adaptationGoal">Adaptation Goal</Label>
+                                    <Select
+                                        name="adaptationGoal"
+                                        value={adaptationFormState.adaptationGoal}
+                                        onValueChange={handleAdaptationSelectChange('adaptationGoal')}
+                                        disabled={isLoadingAnyFeature || authLoading}
+                                    >
+                                        <SelectTrigger id="adaptationGoal"><SelectValue placeholder="Select adaptation goal" /></SelectTrigger>
+                                        <SelectContent>
+                                        {adaptationGoals.map(goal => <SelectItem key={goal.value} value={goal.value}>{goal.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="adaptServings">Desired Servings (for adapted recipe)</Label>
+                                    <Input
+                                        id="adaptServings"
+                                        name="servings"
+                                        type="number"
+                                        min="1" max="12"
+                                        value={adaptationFormState.servings || ''}
+                                        onChange={handleAdaptationNumberInputChange}
+                                        disabled={isLoadingAnyFeature || authLoading}
+                                    />
+                                </div>
+                            </div>
+                            {adaptationFormState.adaptationGoal === "suggestSubstitutions" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="specificIngredientToSubstitute">Ingredient to Substitute</Label>
+                                    <Input
+                                        id="specificIngredientToSubstitute"
+                                        name="specificIngredientToSubstitute"
+                                        placeholder="e.g., all-purpose flour, sugar"
+                                        value={specificIngredientToSubstitute}
+                                        onChange={(e) => setSpecificIngredientToSubstitute(e.target.value)}
+                                        disabled={isLoadingAnyFeature || authLoading}
+                                    />
+                                </div>
+                            )}
+                            <div className="space-y-2">
+                                <Label htmlFor="preferredSubstitution">Preferred Substitution (Optional)</Label>
+                                <Input
+                                    id="preferredSubstitution"
+                                    name="preferredSubstitution"
+                                    placeholder="e.g., almond flour, erythritol"
+                                    value={preferredSubstitution}
+                                    onChange={(e) => setPreferredSubstitution(e.target.value)}
+                                    disabled={isLoadingAnyFeature || authLoading}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="additionalDietaryRestrictions">Additional Dietary Restrictions (comma-separated, optional)</Label>
+                                <Input
+                                    id="additionalDietaryRestrictions"
+                                    name="additionalDietaryRestrictions"
+                                    placeholder="e.g., dairy-free, nut-free"
+                                    value={additionalDietaryRestrictions}
+                                    onChange={(e) => setAdditionalDietaryRestrictions(e.target.value)}
+                                    disabled={isLoadingAnyFeature || authLoading}
+                                />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
+                                {isLoadingAdaptation ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
+                                {isLoadingAdaptation ? 'Chef Ath is Adapting...' : 'Adapt My Recipe!'}
+                            </Button>
+                        </form>
+                    </CardContent>
+                    </Card>
+                </TabsContent>
+                </Tabs>
+            </motion.div>
+
+            {/* NEW: AnimatePresence wrapper for results */}
+            <AnimatePresence>
+                {isLoadingGeneration && <motion.div key="gen-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeGeneratorSkeleton /></motion.div>}
+                {generationError && !isLoadingGeneration && (
+                    <motion.div key="gen-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <Alert variant="destructive" className="mt-8">
+                            <AlertCircle className="h-5 w-5" />
+                            <AlertTitle>Oops! Something went wrong with generation.</AlertTitle>
+                            <AlertDescription>{generationError}</AlertDescription>
+                        </Alert>
+                    </motion.div>
+                )}
+                {generatedRecipe && !isLoadingGeneration && (
+                    <motion.div key="gen-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <GeneratedRecipeDisplay
+                            recipe={generatedRecipe}
+                            onLogRecipe={(recipe) => handleLogRecipe(recipe, 'generate')}
+                            isLoggingRecipe={isLoggingGeneratedRecipe}
+                            recipeSource="generate"
+                        />
+                    </motion.div>
+                )}
+
+                {isLoadingFromIngredients && <motion.div key="fridge-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeGeneratorSkeleton /></motion.div>}
+                {fromIngredientsError && !isLoadingFromIngredients && (
+                    <motion.div key="fridge-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <Alert variant="destructive" className="mt-8">
+                            <AlertCircle className="h-5 w-5" />
+                            <AlertTitle>Oops! Something went wrong with this generation.</AlertTitle>
+                            <AlertDescription>{fromIngredientsError}</AlertDescription>
+                        </Alert>
+                    </motion.div>
+                )}
+                {fromIngredientsRecipe && !isLoadingFromIngredients && (
+                    <motion.div key="fridge-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <GeneratedRecipeDisplay
+                            recipe={fromIngredientsRecipe}
+                            onLogRecipe={(recipe) => handleLogRecipe(recipe, 'fridge')}
+                            isLoggingRecipe={isLoggingFromIngredientsRecipe}
+                            recipeSource="fridge"
+                        />
+                    </motion.div>
+                )}
+
+                {isLoadingAdaptation && <motion.div key="adapt-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeAdaptationSkeleton /></motion.div>}
+                {adaptationError && !isLoadingAdaptation && (
+                    <motion.div key="adapt-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <Alert variant="destructive" className="mt-8">
+                            <AlertCircle className="h-5 w-5" />
+                            <AlertTitle>Oops! Something went wrong with adaptation.</AlertTitle>
+                            <AlertDescription>{adaptationError}</AlertDescription>
+                        </Alert>
+                    </motion.div>
+                )}
+                {adaptedRecipeOutput && !isLoadingAdaptation && (
+                    <motion.div key="adapt-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
+                        <AdaptedRecipeDisplay
+                            adaptedRecipe={adaptedRecipeOutput}
+                            onLogAdaptedRecipe={handleLogAdaptedRecipe}
+                            isLoggingAdaptedRecipe={isLoggingAdaptedRecipe}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
       </div>
     </AppLayout>
   );
 }
-
-    

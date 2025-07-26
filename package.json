@@ -1,4 +1,3 @@
-
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -45,6 +44,7 @@
     "dotenv": "^16.5.0",
     "firebase": "^11.8.1",
     "firebase-admin": "^12.3.0",
+    "framer-motion": "^12.23.6",
     "genkit": "^1.8.0",
     "googleapis": "^140.0.1",
     "lucide-react": "^0.475.0",

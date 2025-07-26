@@ -9,6 +9,8 @@ import { updateUserStreakClientSide } from '@/lib/streakUtils';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { Coffee, Egg, Leaf, Loader2 } from 'lucide-react';
+// NEW: Import our haptic feedback utility.
+import { triggerHapticFeedback } from '@/lib/haptics';
 
 const quickAddItems = [
   { name: 'Black Coffee (1 cup)', icon: Coffee, macros: { calories: 2, protein: 0.3, carbs: 0, fat: 0 } },
@@ -22,6 +24,9 @@ export const QuickAddFood = () => {
   const [loggingItem, setLoggingItem] = useState<string | null>(null);
 
   const handleQuickAdd = async (item: typeof quickAddItems[0]) => {
+    // NEW: Trigger haptic feedback immediately on tap for a responsive feel.
+    triggerHapticFeedback();
+
     if (!user) {
       toast({ title: "Error", description: "You must be logged in.", variant: "destructive" });
       return;

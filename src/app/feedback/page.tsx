@@ -1,7 +1,8 @@
-
 'use client';
 
 import { useState } from 'react';
+// NEW: Import motion from framer-motion
+import { motion } from 'framer-motion';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, MessageCircle, Send, Star, ExternalLink } from 'lucide-react';
 import { submitFeedback } from '@/actions/feedback';
+
+// NEW: Define the standard animation variants
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
 
 const feedbackFormSchema = z.object({
   rating: z.string().min(1, { message: 'Please select a rating.' }),
@@ -64,6 +87,7 @@ export default function FeedbackPage() {
       form.reset();
     } else {
       let errorMsg = "Failed to submit feedback. Please try again.";
+      // This detailed error handling is great, no changes needed here.
       if (typeof result.error === 'string') {
         errorMsg = result.error;
       } else if (result.error && typeof result.error === 'object' && 'comments' in result.error) {
@@ -94,8 +118,7 @@ export default function FeedbackPage() {
 
     const sheetId = process.env.NEXT_PUBLIC_GOOGLE_SHEET_ID;
     if (!sheetId) {
-      toast({ title: 'Configuration Error', description: 'Google Sheet ID is not configured for client-side access. Admins should check .env.local for NEXT_PUBLIC_GOOGLE_SHEET_ID.', variant: 'destructive' });
-      console.error("NEXT_PUBLIC_GOOGLE_SHEET_ID is not set in environment variables.");
+      toast({ title: 'Configuration Error', description: 'Google Sheet ID is not configured. Admins should check NEXT_PUBLIC_GOOGLE_SHEET_ID.', variant: 'destructive' });
       return;
     }
     setIsOpeningSheet(true);
@@ -118,76 +141,90 @@ export default function FeedbackPage() {
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4">
-        <Card className="max-w-2xl mx-auto shadow-lg">
-          <CardHeader className="text-center">
-            <MessageCircle className="mx-auto h-12 w-12 text-primary mb-2" />
-            <CardTitle className="text-3xl font-headline">Share Your Feedback</CardTitle>
-            <CardDescription>We value your opinion! Help us make MeatHead better.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="rating" className="flex items-center">
-                  <Star className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Overall Experience
-                </Label>
-                <Controller
-                  name="rating"
-                  control={form.control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
-                      <SelectTrigger id="rating">
-                        <SelectValue placeholder="Select your rating" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ratingOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {form.formState.errors.rating && <p className="text-sm text-destructive">{form.formState.errors.rating.message}</p>}
-              </div>
+        {/* NEW: This is our main animation container */}
+        <motion.div
+          className="max-w-2xl mx-auto"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {/* NEW: The main feedback card is now a motion component */}
+          <motion.div variants={itemVariants}>
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <MessageCircle className="mx-auto h-12 w-12 text-primary mb-2" />
+                <CardTitle className="text-3xl font-headline">Share Your Feedback</CardTitle>
+                <CardDescription>We value your opinion! Help us make MeatHead better.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="rating" className="flex items-center">
+                      <Star className="mr-2 h-4 w-4 text-muted-foreground" />
+                      Overall Experience
+                    </Label>
+                    <Controller
+                      name="rating"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
+                          <SelectTrigger id="rating">
+                            <SelectValue placeholder="Select your rating" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ratingOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {form.formState.errors.rating && <p className="text-sm text-destructive">{form.formState.errors.rating.message}</p>}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="comments">Your Feedback & Suggestions</Label>
-                <Textarea
-                  id="comments"
-                  {...form.register('comments')}
-                  placeholder="Tell us what you think, what features you'd like, or any issues you've encountered..."
-                  rows={6}
-                  disabled={isSubmitting}
-                />
-                {form.formState.errors.comments && <p className="text-sm text-destructive">{form.formState.errors.comments.message}</p>}
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="comments">Your Feedback & Suggestions</Label>
+                    <Textarea
+                      id="comments"
+                      {...form.register('comments')}
+                      placeholder="Tell us what you think, what features you'd like, or any issues you've encountered..."
+                      rows={6}
+                      disabled={isSubmitting}
+                    />
+                    {form.formState.errors.comments && <p className="text-sm text-destructive">{form.formState.errors.comments.message}</p>}
+                  </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting || !user}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Submit Feedback
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  <Button type="submit" className="w-full" disabled={isSubmitting || !user}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    Submit Feedback
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        {isAdmin && (
-          <Card className="max-w-2xl mx-auto shadow-lg mt-8">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-primary">Admin Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={handleOpenSheet} disabled={isOpeningSheet || !user} className="w-full">
-                {isOpeningSheet ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
-                Open Feedback Sheet
-              </Button>
-            </CardContent>
-             <CardFooter>
-                <p className="text-xs text-muted-foreground">This section is visible to administrators only.</p>
-            </CardFooter>
-          </Card>
-        )}
+          {isAdmin && (
+            // NEW: The admin card is also a motion component
+            <motion.div variants={itemVariants} className="mt-8">
+              <Card className="max-w-2xl mx-auto shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold text-primary">Admin Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button onClick={handleOpenSheet} disabled={isOpeningSheet || !user} className="w-full">
+                    {isOpeningSheet ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                    Open Feedback Sheet
+                  </Button>
+                </CardContent>
+                  <CardFooter>
+                    <p className="text-xs text-muted-foreground">This section is visible to administrators only.</p>
+                </CardFooter>
+              </Card>
+            </motion.div>
+          )}
+        </motion.div>
       </div>
     </AppLayout>
   );
