@@ -23,6 +23,8 @@ export interface UserProfile {
   activeWorkoutPlan?: GenerateWorkoutPlanOutput | null;
   targetWaterIntake?: number | null;
   myWhy?: string; // Added the purpose-driven field
+  currentStreak?: number;
+  lastLogDate?: Timestamp | null;
   isAdmin?: boolean;
   isPremium?: boolean; // Added for premium access control
 }

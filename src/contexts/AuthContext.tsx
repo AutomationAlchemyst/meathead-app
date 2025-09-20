@@ -74,9 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               activeWorkoutPlan: rawData.activeWorkoutPlan ?? null,
               isAdmin: !!rawData.isAdmin,
               isPremium: !!rawData.isPremium,
-              // @ts-ignore
               currentStreak: rawData.currentStreak ?? 0,
-              // @ts-ignore
               lastLogDate: convertTimestamp(rawData.lastLogDate),
             };
             setUserProfile(processedProfile);
