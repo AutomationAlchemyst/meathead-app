@@ -102,6 +102,7 @@ export const DailyActivityCalendar = () => {
           <Calendar
             mode="single"
             selected={new Date()}
+            month={currentMonth}
             onMonthChange={setCurrentMonth}
             className="p-0"
             components={{
