@@ -35,37 +35,23 @@ function RedirectingState() {
 }
 
 export default function RegisterPage() {
-  const { user, loading, authCheckCompleted } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
-  console.log(`[RegisterPage] Render - user: ${user?.uid}, loading: ${loading}, authCheckCompleted: ${authCheckCompleted}`);
-
   useEffect(() => {
-    console.log(`[RegisterPage] useEffect - user: ${user?.uid}, loading: ${loading}, authCheckCompleted: ${authCheckCompleted}`);
-    if (authCheckCompleted && !loading && user) {
-      console.log('[RegisterPage] useEffect: Conditions met. Attempting to redirect to /welcome');
-      router.replace('/welcome'); // Changed from /dashboard
-    } else {
-      console.log('[RegisterPage] useEffect: Conditions NOT met for redirect to welcome.');
+    // When loading is finished, if there's a user, they shouldn't be on the register page.
+    if (!loading && user) {
+      router.replace('/welcome');
     }
-  }, [user, loading, authCheckCompleted, router]);
+  }, [user, loading, router]);
 
-  if (!authCheckCompleted) {
-    console.log('[RegisterPage] Rendering: Auth check not completed. Showing RegisterPageSkeleton.');
+  // While loading, or if a user is found (and we are about to redirect), show a skeleton.
+  // This prevents the form from flashing on screen for a logged-in user.
+  if (loading || user) {
     return <RegisterPageSkeleton />;
   }
 
-  if (loading) {
-    console.log('[RegisterPage] Rendering: Auth check completed, but loading is true. Showing RegisterPageSkeleton.');
-    return <RegisterPageSkeleton />;
-  }
-
-  if (user) {
-    console.log('[RegisterPage] Rendering: Auth check completed, not loading, user exists. Showing RedirectingState.');
-    return <RedirectingState />;
-  }
-
-  console.log('[RegisterPage] Rendering: Auth check completed, not loading, no user. Showing RegisterForm.');
+  // If not loading and no user, show the registration page.
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-background to-muted p-4 selection:bg-primary/20">
       <div className="flex flex-col items-center mb-8 text-center">

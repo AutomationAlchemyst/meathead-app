@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import Link from 'next/link';
 // REMOVED: WFGLogo import as CardFooter containing it is removed.
 
 const loginSchema = z.object({
@@ -125,8 +126,12 @@ export default function LoginForm() {
           </Button>
         </form>
       </CardContent>
-      {/* The CardFooter containing the redundant footer information has been removed. */}
-      {/* The global footer in layout.tsx will now apply to the login page. */}
+      <div className="p-6 pt-0 text-center text-sm text-muted-foreground">
+        Don't have an account?{' '}
+        <Link href="/register" className="font-semibold text-primary underline-offset-4 hover:underline">
+          Sign Up
+        </Link>
+      </div>
     </Card>
   );
 }
