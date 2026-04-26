@@ -48,10 +48,9 @@ service cloud.firestore {
       // ensuring this 'userId' is valid and corresponds to the authenticated user.
       allow create: if request.resource.data.userId is string && request.resource.data.userId != "";
       
-      // Allow read if true: The server action 'getFeedbackSubmissions' now handles
-      // the admin check internally before fetching data.
-      // This trusts your server-side code.
-      allow read: if true;
+      // Users can only read their own feedback submissions.
+      // Admin access should be implemented via Firebase Custom Claims.
+      allow read: if request.auth != null && request.resource.data.userId == request.auth.uid;
       
       // Disallow client-side updates and deletes for feedback submissions.
       allow update, delete: if false;
