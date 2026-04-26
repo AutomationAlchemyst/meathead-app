@@ -9,6 +9,10 @@ import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'fireba
 import { subDays, format, startOfDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Scale } from 'lucide-react';
 
 interface ChartData {
   name: string;
@@ -83,6 +87,32 @@ export const WeeklyProgressChart = () => {
     }, [user, authLoading]);
   
     if (authLoading || isLoading) return <Skeleton className="h-[200px] w-full" />;
+
+    // Check if there's any data to show
+    const hasWeightData = chartData.some(d => d.weight !== null);
+    const hasCarbData = chartData.some(d => d.carbs > 0);
+
+    if (!hasWeightData && !hasCarbData) {
+        return (
+            <Card className="shadow-lg h-full">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><TrendingUp className="mr-2 h-6 w-6 text-primary"/>Weekly Progress</CardTitle>
+                    <CardDescription>Your weight and carb intake over the last 7 days.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <EmptyState
+                        icon={Scale}
+                        title="No data yet"
+                        description="Start logging your weight and meals to see your progress here."
+                        action={{
+                            label: "Log Weight",
+                            href: "/weight-tracking"
+                        }}
+                    />
+                </CardContent>
+            </Card>
+        );
+    }
 
     return (
         <Card className="shadow-lg h-full">

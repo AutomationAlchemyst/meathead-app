@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { Button } from '../ui/button';
 import { Dumbbell, ListChecks, Info, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export default function RecentWorkoutsCard() {
   const { user, loading: authLoading } = useAuth();
@@ -168,13 +169,15 @@ export default function RecentWorkoutsCard() {
             ))}
           </ul>
         ) : (
-          <div className="text-center py-4">
-            <Dumbbell className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No workouts logged yet.</p>
-            <Button variant="link" asChild className="mt-1 text-primary">
-              <Link href="/workout-planner">Plan & Log a Workout!</Link>
-            </Button>
-          </div>
+          <EmptyState
+            icon={Dumbbell}
+            title="No workouts yet"
+            description="Create a personalized workout plan to get started."
+            action={{
+              label: "Create Workout Plan",
+              href: "/workout-planner"
+            }}
+          />
         )}
       </CardContent>
     </Card>

@@ -10,9 +10,10 @@ import { format, startOfDay, endOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, Timestamp, orderBy } from 'firebase/firestore';
+import { EmptyState } from '@/components/ui/empty-state';
+import Link from 'next/link';
+import { Utensils } from 'lucide-react';
 
-// --- THE FIX ---
-// We are changing "export default function" to "export const TodaysFoodLogList = () =>"
 export const TodaysFoodLogList = (): ReactElement => {
     const { user, loading: authLoading } = useAuth();
     const [logs, setLogs] = useState<FoodLog[]>([]);
@@ -42,8 +43,16 @@ export const TodaysFoodLogList = (): ReactElement => {
     
     if (logs.length === 0) {
         return (
-            <div className="text-center p-8 mt-8 border rounded-lg">
-                <p className="text-muted-foreground">No meals logged for today yet.</p>
+            <div className="mt-8">
+                <EmptyState
+                    icon={Utensils}
+                    title="No meals logged yet"
+                    description="Start tracking your meals to see your macros and progress here."
+                    action={{
+                        label: "Log Your First Meal",
+                        href: "/food-logging"
+                    }}
+                />
             </div>
         );
     }
