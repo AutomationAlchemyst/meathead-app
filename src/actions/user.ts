@@ -6,6 +6,8 @@ import type { UserProfile, ActivityLevel } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 
+const FREE_GENERATIONS_PER_MONTH = 3;
+
 const UserProfileUpdateSchema = z.object({
   displayName: z.string().min(2, "Display name must be at least 2 characters.").optional().or(z.literal('')),
   myWhy: z.string().max(500, "Your 'Why' cannot be more than 500 characters.").optional().or(z.literal('')), // Added myWhy validation
@@ -102,5 +104,38 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   } catch (error: any) {
     console.error("Error updating user profile:", error);
     return { error: error.message };
+  }
+}
+
+export async function incrementFreeGenerationsUsed(userId: string): Promise<{ success: boolean; generationsLeft: number }> {
+  if (!userId) return { success: false, generationsLeft: 0 };
+
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      return { success: false, generationsLeft: FREE_GENERATIONS_PER_MONTH };
+    }
+
+    const userData = userDoc.data();
+    const storedMonth = userData.freeGenerationsMonth;
+    const storedCount = userData.freeGenerationsUsedThisMonth || 0;
+
+    // Reset count if it's a new month
+    const newCount = storedMonth === currentMonth ? storedCount + 1 : 1;
+
+    await updateDoc(userDocRef, {
+      freeGenerationsUsedThisMonth: newCount,
+      freeGenerationsMonth: currentMonth,
+      updatedAt: serverTimestamp(),
+    });
+
+    return { success: true, generationsLeft: Math.max(0, FREE_GENERATIONS_PER_MONTH - newCount) };
+  } catch (error) {
+    console.error('Error incrementing free generations:', error);
+    return { success: false, generationsLeft: 0 };
   }
 }

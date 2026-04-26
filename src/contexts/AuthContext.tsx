@@ -76,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               isPremium: !!rawData.isPremium,
               currentStreak: rawData.currentStreak ?? 0,
               lastLogDate: convertTimestamp(rawData.lastLogDate),
+              freeGenerationsUsedThisMonth: rawData.freeGenerationsUsedThisMonth ?? 0,
+              freeGenerationsMonth: rawData.freeGenerationsMonth ?? null,
             };
             setUserProfile(processedProfile);
           } else {

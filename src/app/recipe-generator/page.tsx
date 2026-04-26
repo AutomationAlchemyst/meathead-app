@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { incrementFreeGenerationsUsed } from '@/actions/user';
 import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -255,6 +256,12 @@ function RecipeAdaptationSkeleton() {
 
 const MAX_FREE_GENERATIONS = 3; 
 
+// Helper to get current month string
+function getCurrentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function RecipeGeneratorPage() {
   const { user, userProfile, loading: authLoading, isPremium } = useAuth();
   const { toast } = useToast();
@@ -296,11 +303,14 @@ export default function RecipeGeneratorPage() {
     mealType: "Any",
   });
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
-  const [monthlyFreeGenerationsUsed, setMonthlyFreeGenerationsUsed] = useState(0);
   const [trialAvailable, setTrialAvailable] = useState(true); 
 
-  const canUseFeature = isPremium || trialDaysRemaining > 0 || monthlyFreeGenerationsUsed < MAX_FREE_GENERATIONS;
+  // Get free generations from userProfile (persisted in Firestore)
+  const currentMonth = getCurrentMonth();
+  const storedMonth = userProfile?.freeGenerationsMonth;
+  const monthlyFreeGenerationsUsed = storedMonth === currentMonth ? (userProfile?.freeGenerationsUsedThisMonth ?? 0) : 0;
   const freeGenerationsLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
+  const canUseFeature = isPremium || trialDaysRemaining > 0 || monthlyFreeGenerationsUsed < MAX_FREE_GENERATIONS;
 
   const handleGenerationInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -341,12 +351,12 @@ export default function RecipeGeneratorPage() {
     setFromIngredientsFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
   };
 
-  const incrementUsageAndCheckLimit = () => {
-    if (!isPremium && trialDaysRemaining <= 0) {
-      setMonthlyFreeGenerationsUsed(prev => {
-        return prev + 1;
-      });
-    }
+  const incrementUsageAndCheckLimit = async () => {
+    if (isPremium || trialDaysRemaining > 0) return; // Premium/trial users don't count
+    if (!user) return;
+    
+    // Persist to Firestore
+    await incrementFreeGenerationsUsed(user.uid);
   };
 
   const handleGenerateRecipe = async (e: React.FormEvent) => {
@@ -355,7 +365,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free generations. Upgrade to Premium or start a trial for unlimited access!", variant: "destructive" });
       return;
     }
-    incrementUsageAndCheckLimit();
+    await incrementUsageAndCheckLimit();
 
     setIsLoadingGeneration(true);
     setGenerationError(null);
@@ -454,7 +464,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free adaptations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
-    incrementUsageAndCheckLimit();
+    await incrementUsageAndCheckLimit();
 
     setIsLoadingAdaptation(true);
     setAdaptationError(null);
@@ -494,7 +504,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free 'Fridge' generations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
-    incrementUsageAndCheckLimit();
+    await incrementUsageAndCheckLimit();
 
     setIsLoadingFromIngredients(true);
     setFromIngredientsError(null);

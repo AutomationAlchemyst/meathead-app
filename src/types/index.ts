@@ -27,6 +27,9 @@ export interface UserProfile {
   lastLogDate?: Timestamp | null;
   isAdmin?: boolean;
   isPremium?: boolean; // Added for premium access control
+  // Free generation tracking
+  freeGenerationsUsedThisMonth?: number;
+  freeGenerationsMonth?: string; // YYYY-MM format for monthly reset
 }
 
 export interface FoodLog {
