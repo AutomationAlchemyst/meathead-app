@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, LogOut, LayoutDashboard, UserCircle, Sparkles, Dumbbell, Droplet, MessageCircle, Compass } from 'lucide-react';
+import { Menu, LogOut, LayoutDashboard, UserCircle, Sparkles, Dumbbell, Droplet, MessageCircle, Compass, Shield } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { Logo } from '@/components/icons/Logo';
@@ -19,6 +19,7 @@ const navItems = [
   { href: '/water-tracking', label: 'Water Log', icon: Droplet },
   { href: '/feedback', label: 'Feedback', icon: MessageCircle },
   { href: '/profile', label: 'Profile', icon: UserCircle },
+  { href: '/admin', label: 'Admin', icon: Shield },
 ];
 
 export function Navbar() {
