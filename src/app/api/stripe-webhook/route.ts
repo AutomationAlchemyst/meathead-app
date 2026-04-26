@@ -25,7 +25,9 @@ let adminDb: admin.firestore.Firestore;
 
 if (serviceAccountJsonString) {
   try {
-    const serviceAccount: ServiceAccount = JSON.parse(serviceAccountJsonString);
+    // Handle escaped newlines in private key (JSON string escape sequences)
+    const sanitizedJson = serviceAccountJsonString.replace(/\\n/g, '\n');
+    const serviceAccount: ServiceAccount = JSON.parse(sanitizedJson);
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
