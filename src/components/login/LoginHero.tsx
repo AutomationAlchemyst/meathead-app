@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Sparkles, Dumbbell, Utensils, TrendingUp } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -22,22 +22,7 @@ export function LoginHero() {
       heroTl
         .from('.hero-tagline', { opacity: 0, y: 60, duration: 1 })
         .from('.hero-subtext', { opacity: 0, y: 40, duration: 0.8 }, '-=0.5')
-        .from('.hero-cta', { opacity: 0, y: 30, duration: 0.6 }, '-=0.4')
-        .from('.floating-icon', { 
-          opacity: 0, 
-          scale: 0, 
-          duration: 0.6, 
-          stagger: 0.15,
-          ease: 'back.out(1.7)'
-        }, '-=0.3');
-
-      // Floating icons ambient animation
-      gsap.to('.floating-icon', {
-        y: -15,
-        duration: 2,
-        ease: 'power1.inOut',
-        stagger: { each: 0.3, repeat: -1, yoyo: true }
-      });
+        .from('.hero-cta', { opacity: 0, y: 30, duration: 0.6 }, '-=0.4');
 
       // Features section - scroll triggered
       gsap.from('.feature-card', {
@@ -121,30 +106,6 @@ export function LoginHero() {
     <div ref={containerRef} className="login-scrollytelling">
       {/* Hero Section */}
       <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100">
-        {/* Floating Icons */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="floating-icon absolute top-20 left-[10%]">
-            <div className="w-16 h-16 rounded-full bg-orange-200/60 flex items-center justify-center backdrop-blur-sm">
-              <Utensils className="h-8 w-8 text-orange-600" />
-            </div>
-          </div>
-          <div className="floating-icon absolute top-32 right-[15%]">
-            <div className="w-20 h-20 rounded-full bg-amber-200/60 flex items-center justify-center backdrop-blur-sm">
-              <Dumbbell className="h-9 w-9 text-amber-600" />
-            </div>
-          </div>
-          <div className="floating-icon absolute bottom-40 left-[20%]">
-            <div className="w-14 h-14 rounded-full bg-yellow-200/60 flex items-center justify-center backdrop-blur-sm">
-              <Sparkles className="h-7 w-7 text-yellow-600" />
-            </div>
-          </div>
-          <div className="floating-icon absolute bottom-32 right-[10%]">
-            <div className="w-18 h-18 rounded-full bg-orange-200/60 flex items-center justify-center backdrop-blur-sm">
-              <TrendingUp className="h-8 w-8 text-orange-500" />
-            </div>
-          </div>
-        </div>
-
         {/* Hero Content */}
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
           <div className="hero-tagline mb-6">
