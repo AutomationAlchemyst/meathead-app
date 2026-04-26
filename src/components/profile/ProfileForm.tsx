@@ -485,19 +485,19 @@ export default function ProfileForm() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between pb-4 border-b">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
         <div className="flex items-center space-x-4">
           <UserCircle className="h-16 w-16 text-primary" />
           <div>
             <h3 className="text-xl font-semibold">{viewDisplayName}</h3>
-            <p className="text-sm text-muted-foreground">{viewEmail}</p>
+            <p className="text-sm text-muted-foreground break-all">{viewEmail}</p>
           </div>
         </div>
         {!editMode && (
           <Button variant="outline" onClick={() => {
             synchronizeProfileStates(displayProfile); 
             setEditMode(true);
-          }} disabled={isSubmitting || authLoading}>
+          }} disabled={isSubmitting || authLoading} className="w-full sm:w-auto">
             <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
           </Button>
         )}
