@@ -105,8 +105,7 @@ export function LoginHero() {
             Personalized macros, recipes & workouts — all tailored for your keto journey in Singapore.
           </p>
           <div className="hero-cta">
-            <div className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
-              <Sparkles className="h-5 w-5 text-orange-500" />
+            <div className="bg-white/60 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
               <span className="text-amber-900 font-medium">Join the community — it&apos;s free to start</span>
             </div>
           </div>
