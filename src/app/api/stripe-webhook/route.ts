@@ -237,6 +237,41 @@ export async function POST(req: Request) {
       }
       break;
 
+    case 'invoice.payment_failed':
+      const failedInvoice = event.data.object as Stripe.Invoice;
+      console.log('[API /stripe-webhook] Invoice payment failed for subscription:', failedInvoice.subscription, 'Customer:', failedInvoice.customer);
+      // Notify user of failed payment and potentially downgrade their status
+      if (failedInvoice.subscription && failedInvoice.customer) {
+        let failedInvoiceUserId = failedInvoice.metadata?.firebaseUserId;
+        if (!failedInvoiceUserId && typeof failedInvoice.customer === 'string') {
+            try {
+                const usersRef = adminDb.collection('users');
+                const querySnapshot = await usersRef.where('stripeCustomerId', '==', failedInvoice.customer).limit(1).get();
+                if (!querySnapshot.empty) {
+                    failedInvoiceUserId = querySnapshot.docs[0].id;
+                    const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
+                    // Optionally downgrade user or mark payment as failed
+                    // For now, just log and update status to past_due
+                    await userDocRef.update({
+                        premiumSubscriptionStatus: 'past_due',
+                        subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    });
+                    console.log(`[API /stripe-webhook] User ${failedInvoiceUserId} payment failed, status set to past_due.`);
+                }
+            } catch (lookupError: any) {
+                console.error(`[API /stripe-webhook] Error processing invoice.payment_failed for customer ${failedInvoice.customer}:`, lookupError);
+            }
+        } else if (failedInvoiceUserId) {
+            const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
+            await userDocRef.update({
+                premiumSubscriptionStatus: 'past_due',
+                subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            console.log(`[API /stripe-webhook] User ${failedInvoiceUserId} payment failed, status set to past_due.`);
+        }
+      }
+      break;
+
     default:
       console.warn(`[API /stripe-webhook] Unhandled event type: ${event.type}`);
   }
