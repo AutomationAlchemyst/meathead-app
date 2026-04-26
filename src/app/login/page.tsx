@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
@@ -8,13 +8,13 @@ import { Logo } from '@/components/icons/Logo';
 import { LoginHero } from '@/components/login/LoginHero';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Link from 'next/link';
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && user) {
@@ -25,11 +25,10 @@ export default function LoginPage() {
   useEffect(() => {
     if (loading || user) return;
 
-    // Animate form section after hero loads
     const ctx = gsap.context(() => {
-      gsap.from('.login-form-container', {
+      gsap.from('.login-form-wrapper', {
         scrollTrigger: {
-          trigger: '.login-form-container',
+          trigger: '.login-form-wrapper',
           start: 'top 85%',
           toggleActions: 'play none none reverse',
         },
@@ -77,20 +76,8 @@ export default function LoginPage() {
       {/* Login Form Section */}
       <section className="py-20 px-6 bg-gradient-to-b from-amber-100 to-orange-100">
         <div className="max-w-md mx-auto">
-          <div className="login-form-container">
-            <div className="bg-white rounded-3xl shadow-2xl shadow-orange-200/50 p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-                <p className="text-gray-500">Login to continue your keto journey</p>
-              </div>
-              <LoginForm />
-              <div className="mt-6 text-center text-sm text-gray-500">
-                Don&apos;t have an account?{' '}
-                <Link href="/register" className="font-semibold text-orange-500 hover:text-orange-600">
-                  Start Free
-                </Link>
-              </div>
-            </div>
+          <div className="login-form-wrapper">
+            <LoginForm />
           </div>
         </div>
       </section>
@@ -106,5 +93,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-import Link from 'next/link';
