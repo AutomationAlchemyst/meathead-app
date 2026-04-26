@@ -4,11 +4,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'aththaariq001@gmail.com';
+    }
+
     // Rules for the 'users' collection
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow users to read/write their own profile, admins can read all
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow delete: if false;
 
       // Rules for the 'foodLogs' subcollection
@@ -49,8 +55,8 @@ service cloud.firestore {
       allow create: if request.resource.data.userId is string && request.resource.data.userId != "";
       
       // Users can only read their own feedback submissions.
-      // Admin access should be implemented via Firebase Custom Claims.
-      allow read: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Admins can read all feedback submissions.
+      allow read: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
       
       // Disallow client-side updates and deletes for feedback submissions.
       allow update, delete: if false;
