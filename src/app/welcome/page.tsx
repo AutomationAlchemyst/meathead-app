@@ -291,34 +291,30 @@ export default function WelcomePage() {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-3">
                 <div>
-                  <p className="font-medium text-foreground/90 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Recipe Genie Power-Up!</p>
-                  <p className="pl-5 text-xs">New "What's In My Fridge?" & "Adapt Recipe" tabs. Plus, enhanced Halal & Spice control.</p>
-                </div>
-                
-                <div>
-                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Workout Planner Upgrades!</p>
-                  <p className="pl-5 text-xs">Joint-friendly plans, "Missed a Day?" adaptation. See consistency with the new Workout Activity Calendar on your Dashboard!</p>
-                </div>
-                
-                <div>
-                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Smarter Dashboard!</p>
-                  <p className="pl-5 text-xs">Insights now use water & workout data. Today's stats update in real-time! Daily logging consistency calendar added.</p>
+                  <p className="font-medium text-foreground/90 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Free Generations Now Persisted!</p>
+                  <p className="pl-5 text-xs">Your free AI recipe generations stay saved — no resets on refresh. 3 free generations per month, auto-resets on the 1st.</p>
                 </div>
 
                 <div>
-                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Enhanced Food Logging!</p>
-                  <p className="pl-5 text-xs">View, edit, and delete individual food log entries directly on the Food Logging page.</p>
-                </div>
-                
-                <div>
-                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><MessageCircle className="h-4 w-4 mr-1.5 text-primary" />Share Your Thoughts!</p>
-                  <p className="pl-5 text-xs">A dedicated Feedback page is now live. Help us improve MeatHead by sharing your experience and suggestions.</p>
+                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Edit & Delete Your Logs</p>
+                  <p className="pl-5 text-xs">Made a mistake when logging? You can now edit or delete your food, weight, and workout entries.</p>
                 </div>
 
                 <div>
-                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Revamped Welcome & Guidance!</p>
-                  <p className="pl-5 text-xs">This "Start Here" page is your new guide, always accessible from the navigation bar.</p>
+                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Better Empty States</p>
+                  <p className="pl-5 text-xs">First time? See helpful guides and CTAs instead of blank screens when you haven't logged anything yet.</p>
                 </div>
+
+                <div>
+                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Payment Failures Handled</p>
+                  <p className="pl-5 text-xs">If a subscription payment fails, you'll be notified instead of losing access silently.</p>
+                </div>
+
+                <div>
+                  <p className="font-medium text-foreground/90 pt-1 flex items-center"><Rocket className="h-4 w-4 mr-1.5 text-primary" />Feedback Now Private</p>
+                  <p className="pl-5 text-xs">Your feedback submissions are now private — only you can see what you submit.</p>
+                </div>
+
                 <div className="pt-3 mt-3 border-t border-border/50">
                     <p className="text-xs text-muted-foreground/80 italic text-center">Updated as of: {format(new Date(), "MMMM d, yyyy")}</p>
                 </div>
