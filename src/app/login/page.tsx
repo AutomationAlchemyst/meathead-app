@@ -83,10 +83,22 @@ export default function LoginPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 bg-amber-900 text-amber-100">
-        <div className="max-w-5xl mx-auto text-center">
-          <p className="text-sm opacity-70">
+      <footer className="py-6 px-4 bg-amber-900 text-amber-100">
+        <div className="max-w-xl mx-auto">
+          {/* Logos row - replace with your actual logo images */}
+          <div className="flex items-center justify-center gap-6 mb-4">
+            <div className="h-8 px-4 py-1 bg-amber-800/50 rounded flex items-center justify-center text-xs font-bold">
+              WORKFLOWGUYS
+            </div>
+            <div className="h-8 px-4 py-1 bg-amber-800/50 rounded flex items-center justify-center text-xs font-bold">
+              MEATHEAD
+            </div>
+          </div>
+          <p className="text-center text-xs opacity-60 mb-2">
             © 2026 MeatHead by WorkFlowGuys. Your AI Keto Coach in Singapore.
+          </p>
+          <p className="text-center text-xs opacity-40">
+            Designed by Ath Thaariq Marthas
           </p>
         </div>
       </footer>
