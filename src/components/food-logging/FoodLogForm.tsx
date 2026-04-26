@@ -189,14 +189,14 @@ export const FoodLogForm = () => {
               Describe your meal
             </Label>
             {/* --- UI UPDATE --- Added Mic button */}
-            <div className="flex items-start gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
               <Textarea
                 id="naturalLanguageQuery"
                 {...form.register('naturalLanguageQuery')}
                 placeholder="e.g., A bowl of oatmeal with blueberries and a black coffee"
                 rows={3}
                 disabled={isSubmitting || authLoading || !canUseAILogging || isListening}
-                className="min-h-[80px]"
+                className="min-h-[80px] text-base"
               />
               <Button
                 type="button"
@@ -204,9 +204,9 @@ export const FoodLogForm = () => {
                 size="icon"
                 onClick={handleListen}
                 disabled={isSubmitting || authLoading || !canUseAILogging}
-                className="h-full aspect-square min-h-[80px]"
+                className="h-12 w-12 sm:h-full sm:aspect-square sm:min-h-[80px] self-center"
               >
-                <Mic className={`h-6 w-6 ${isListening ? 'animate-pulse' : ''}`} />
+                <Mic className={`h-5 w-5 ${isListening ? 'animate-pulse' : ''}`} />
                 <span className="sr-only">Log with voice</span>
               </Button>
             </div>

@@ -67,12 +67,12 @@ export const QuickAddFood = () => {
             <Button
               key={item.name}
               variant="outline"
-              className="h-auto py-3"
+              className="h-auto py-3 px-2 text-xs sm:text-sm"
               onClick={() => handleQuickAdd(item)}
               disabled={isLoggingThis || !user}
             >
-              {isLoggingThis ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Icon className="h-4 w-4 mr-2 text-primary" />}
-              {item.name}
+              {isLoggingThis ? <Loader2 className="h-4 w-4 mr-1 sm:mr-2 animate-spin flex-shrink-0" /> : <Icon className="h-4 w-4 mr-1 sm:mr-2 text-primary flex-shrink-0" />}
+              <span className="truncate">{item.name}</span>
             </Button>
           );
         })}

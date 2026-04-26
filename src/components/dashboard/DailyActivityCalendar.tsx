@@ -107,13 +107,12 @@ export const DailyActivityCalendar = () => {
             className="p-0"
             components={{
               DayContent: ({ date }) => (
-                <div className="relative h-full w-full flex items-center justify-center">
-                  <span>{date.getDate()}</span>
-                  <div className="absolute bottom-0.5 flex space-x-0.5">
-                    {dayHasFoodLog(date) && <Utensils className="h-2.5 w-2.5 text-green-500" title="Food Logged" />}
-                    {dayHasWaterLog(date) && <Droplet className="h-2.5 w-2.5 text-blue-500" title="Water Logged" />}
-                    {/* NEW: Conditionally render the dumbbell icon if a workout was logged */}
-                    {dayHasWorkoutLog(date) && <Dumbbell className="h-2.5 w-2.5 text-red-500" title="Workout Logged" />}
+                <div className="relative h-full w-full flex flex-col items-center justify-center">
+                  <span className="text-[10px] sm:text-sm leading-none">{date.getDate()}</span>
+                  <div className="absolute bottom-0 flex space-x-0.5">
+                    {dayHasFoodLog(date) && <Utensils className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-green-500" title="Food Logged" />}
+                    {dayHasWaterLog(date) && <Droplet className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-blue-500" title="Water Logged" />}
+                    {dayHasWorkoutLog(date) && <Dumbbell className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-red-500" title="Workout Logged" />}
                   </div>
                 </div>
               ),
