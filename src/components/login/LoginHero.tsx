@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Dumbbell, TrendingUp } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
