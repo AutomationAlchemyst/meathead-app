@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Sparkles, Dumbbell, TrendingUp } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -33,24 +33,10 @@ export function LoginHero() {
           toggleActions: 'play none none reverse',
         },
         opacity: 0,
-        x: -50,
+        y: 40,
         duration: 0.8,
-        stagger: 0.2,
+        stagger: 0.15,
         ease: 'power3.out',
-      });
-
-      gsap.from('.feature-icon-wrap', {
-        scrollTrigger: {
-          trigger: featuresRef.current,
-          start: 'top 80%',
-          end: 'bottom 20%',
-          toggleActions: 'play none none reverse',
-        },
-        scale: 0,
-        duration: 0.5,
-        stagger: 0.2,
-        ease: 'back.out(1.7)',
-        delay: 0.3,
       });
 
       // Social proof counter animation
@@ -144,27 +130,18 @@ export function LoginHero() {
           <div className="grid md:grid-cols-3 gap-8">
             {/* Feature 1 */}
             <div className="feature-card bg-white rounded-2xl p-8 shadow-lg shadow-orange-200/50">
-              <div className="feature-icon-wrap w-16 h-16 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mb-6">
-                <Sparkles className="h-8 w-8 text-white" />
-              </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">AI Recipe Genie</h3>
               <p className="text-gray-600">Halal-friendly keto meals in seconds. Just describe what&apos;s in your fridge — Chef Ath whips up the rest.</p>
             </div>
 
             {/* Feature 2 */}
             <div className="feature-card bg-white rounded-2xl p-8 shadow-lg shadow-orange-200/50">
-              <div className="feature-icon-wrap w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center mb-6">
-                <Dumbbell className="h-8 w-8 text-white" />
-              </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Smart Workout Planner</h3>
               <p className="text-gray-600">Joint-friendly, goal-focused plans that adapt when life happens. Missed a day? Coach Ath adjusts.</p>
             </div>
 
             {/* Feature 3 */}
             <div className="feature-card bg-white rounded-2xl p-8 shadow-lg shadow-orange-200/50">
-              <div className="feature-icon-wrap w-16 h-16 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center mb-6">
-                <TrendingUp className="h-8 w-8 text-white" />
-              </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Progress Tracking</h3>
               <p className="text-gray-600">Log meals, weight & workouts. See your wins every day with smart insights and keto macros auto-calculated.</p>
             </div>
