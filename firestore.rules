@@ -14,33 +14,28 @@ service cloud.firestore {
       // Rules for the 'foodLogs' subcollection
       match /foodLogs/{logId} {
         allow read: if request.auth != null && request.auth.uid == userId;
-        // Assumes server action or client correctly sets userId in the document
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false; 
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
       // Rules for the 'weightLogs' subcollection
       match /weightLogs/{logId} {
         allow read: if request.auth != null && request.auth.uid == userId;
-        // Assumes server action or client correctly sets userId in the document
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
       // Rules for the 'workoutLogs' subcollection
       match /workoutLogs/{logId} {
         allow read: if request.auth != null && request.auth.uid == userId;
-        // Assumes server action or client correctly sets userId in the document
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        allow update, delete: if false;
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
       // Rules for the 'waterLogs' subcollection
       match /waterLogs/{logId} {
         allow read: if request.auth != null && request.auth.uid == userId;
-        // Assumes server action or client correctly sets userId in the document
         allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-        // Allow user to update or delete their own water logs
         allow update: if request.auth != null && request.auth.uid == userId;
         allow delete: if request.auth != null && request.auth.uid == userId;
       }
