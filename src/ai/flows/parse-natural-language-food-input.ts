@@ -33,11 +33,16 @@ const prompt = ai.definePrompt({
   name: 'parseNaturalLanguageFoodPrompt',
   input: {schema: ParseNaturalLanguageFoodInputSchema},
   output: {schema: ParseNaturalLanguageFoodOutputSchema},
-  prompt: `You are an expert at understanding food descriptions.
+  prompt: `You are an expert at understanding food descriptions, especially keto and Bulletproof Coffee drinks.
 The user will provide a natural language description of what they ate.
-Your task is to extract individual food items and their quantities.
-If a quantity is not explicitly mentioned, try to infer a reasonable common serving size (e.g., "an apple" -> quantity "1 medium", "coffee" -> quantity "1 cup", "a slice of pizza" -> quantity "1 slice").
-If multiple distinct items are mentioned, list them all.
+Your task is to extract ALL individual food items and their quantities, including any ADDITIVES or MIX-INS.
+
+CRITICAL RULES:
+1. ALWAYS extract every single item mentioned, even small amounts like "butter", "oil", "cream", "MCT"
+2. If someone says "coffee with butter and MCT oil", you MUST list: coffee, butter, AND MCT oil as SEPARATE items
+3. List each component separately - do NOT skip ingredients just because they're mentioned as additions
+4. If a quantity is not explicitly mentioned, infer a reasonable common serving size
+
 Return the result as a JSON array of objects, where each object has a "foodItem" and a "quantity" key.
 
 Example 1:
@@ -50,18 +55,31 @@ Your output:
 ]
 
 Example 2:
+User input: "250ml black coffee with a tablespoon of butter and 1 tsp of MCT oil"
+Your output:
+[
+  { "foodItem": "black coffee", "quantity": "250ml" },
+  { "foodItem": "butter", "quantity": "1 tablespoon" },
+  { "foodItem": "MCT oil", "quantity": "1 tsp" }
+]
+
+Example 3:
 User input: "two scrambled eggs and a slice of toast with butter"
 Your output:
 [
   { "foodItem": "scrambled eggs", "quantity": "2" },
-  { "foodItem": "toast with butter", "quantity": "1 slice" }
+  { "foodItem": "toast", "quantity": "1 slice" },
+  { "foodItem": "butter", "quantity": "1 pat" }
 ]
 
-Example 3:
-User input: "chicken sandwich"
+Example 4:
+User input: "salad with chicken breast, avocado, olive oil, and cheese"
 Your output:
 [
-  { "foodItem": "chicken sandwich", "quantity": "1" }
+  { "foodItem": "chicken breast", "quantity": "1 serving" },
+  { "foodItem": "avocado", "quantity": "1/2" },
+  { "foodItem": "olive oil", "quantity": "1 tablespoon" },
+  { "foodItem": "cheese", "quantity": "1 serving" }
 ]
 
 User input: "{{{naturalLanguageQuery}}}"
