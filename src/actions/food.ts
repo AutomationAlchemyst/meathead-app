@@ -19,18 +19,14 @@ export async function getTodaysFoodLogs(userId: string): Promise<FoodLog[]> {
     const todayTimestamp = Timestamp.fromDate(today);
     const tomorrowTimestamp = Timestamp.fromDate(tomorrow);
 
-    const foodLogsCollection = collection(db, 'foodlogs');
+    // FoodLogs is a subcollection under users/{userId}/foodLogs
+    const foodLogsCollection = collection(db, 'users', userId, 'foodLogs');
     
-    // --- THE FIX ---
-    // We've added a 'where' clause to ensure we only query for logs
-    // belonging to the currently authenticated user (userId).
-    // This now satisfies the Firestore security rules.
     const q = query(
       foodLogsCollection,
-      where('userId', '==', userId),
       where('loggedAt', '>=', todayTimestamp),
       where('loggedAt', '<', tomorrowTimestamp),
-      orderBy('loggedAt', 'desc') // Also good practice to order the logs
+      orderBy('loggedAt', 'desc')
     );
 
     const querySnapshot = await getDocs(q);
@@ -38,7 +34,6 @@ export async function getTodaysFoodLogs(userId: string): Promise<FoodLog[]> {
     return logs;
   } catch (error) {
     console.error("Error fetching today's food logs:", error);
-    // We return an empty array but the error will be logged on the server.
     return [];
   }
 }
@@ -49,7 +44,8 @@ export async function addMultipleFoodLogs(userId: string, foodItems: Omit<FoodLo
   }
   try {
     const batch = writeBatch(db);
-    const foodLogsCollection = collection(db, 'foodlogs');
+    // FoodLogs is a subcollection under users/{userId}/foodLogs
+    const foodLogsCollection = collection(db, 'users', userId, 'foodLogs');
     
     foodItems.forEach(log => {
       const newLogRef = doc(foodLogsCollection);
@@ -66,12 +62,12 @@ export async function addMultipleFoodLogs(userId: string, foodItems: Omit<FoodLo
   }
 }
 
-export async function deleteFoodLog(logId: string) {
-  if (!logId) {
-    return { success: false, error: "No log ID provided." };
+export async function deleteFoodLog(userId: string, logId: string) {
+  if (!logId || !userId) {
+    return { success: false, error: "No log ID or user ID provided." };
   }
   try {
-    await deleteDoc(doc(db, 'foodlogs', logId));
+    await deleteDoc(doc(db, 'users', userId, 'foodLogs', logId));
     revalidatePath('/food-logging');
     revalidatePath('/dashboard');
     return { success: true };
