@@ -1,18 +1,20 @@
 
 'use client';
 
+import type { ReactElement } from 'react';
+import { useState } from 'react';
 import type { AdaptRecipeOutput, RecipeIngredient, RecipeStep, RecipeMacros } from '@/ai/flows/adapt-recipe-flow';
 import { Card, CardContent, CardDescription, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileText, ShoppingBasket, CookingPot, Sparkles, Info, CheckSquare, ChevronsRight, PlusCircle, Loader2, Flame, Beef, Wheat, Droplets as FatIcon } from 'lucide-react';
+import { FileText, ShoppingBasket, CookingPot, Sparkles, Info, CheckSquare, ChevronsRight, PlusCircle, Loader2, Flame, Beef, Wheat, Droplets as FatIcon, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AdaptedRecipeDisplayProps {
   adaptedRecipe: AdaptRecipeOutput;
-  onLogAdaptedRecipe?: (macros: RecipeMacros, recipeName: string, servingsFromRecipe: number) => Promise<void>;
+  onLogAdaptedRecipe?: (macros: RecipeMacros, recipeName: string, servingsToLog: number) => Promise<void>;
   isLoggingAdaptedRecipe?: boolean;
 }
 
@@ -37,8 +39,20 @@ export default function AdaptedRecipeDisplay({ adaptedRecipe, onLogAdaptedRecipe
     servings,
   } = adaptedRecipe;
 
-  const actualServings = typeof servings === 'number' && servings > 0 ? servings : 1;
+  const recipeServings = typeof servings === 'number' && servings > 0 ? servings : 1;
+  const [servingsToLog, setServingsToLog] = useState(1);
 
+  // Scale macros for the selected number of servings
+  const scale = servingsToLog / recipeServings;
+  const scaledMacros: RecipeMacros = {
+    calories: Math.round(adaptedMacrosPerServing.calories * scale),
+    protein: Math.round(adaptedMacrosPerServing.protein * scale * 10) / 10,
+    carbs: Math.round(adaptedMacrosPerServing.carbs * scale * 10) / 10,
+    fat: Math.round(adaptedMacrosPerServing.fat * scale * 10) / 10,
+  };
+
+  const incrementServings = () => setServingsToLog(prev => Math.min(prev + 1, recipeServings));
+  const decrementServings = () => setServingsToLog(prev => Math.max(prev - 1, 1));
 
   return (
     <Card className="mt-8 shadow-xl">
@@ -47,7 +61,7 @@ export default function AdaptedRecipeDisplay({ adaptedRecipe, onLogAdaptedRecipe
           <FileText className="h-8 w-8 mr-3" /> {adaptedRecipeName}
         </CardTitle>
         {originalRecipeName && <CardDescription className="text-sm pt-1">Adapted from: {originalRecipeName}</CardDescription>}
-        <CardDescription className="text-sm pt-1">Yields: {actualServings} serving(s)</CardDescription>
+        <CardDescription className="text-sm pt-1">Yields: {recipeServings} serving(s)</CardDescription>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <div>
@@ -120,16 +134,47 @@ export default function AdaptedRecipeDisplay({ adaptedRecipe, onLogAdaptedRecipe
 
         <div>
           <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center">
-            <Sparkles className="h-6 w-6 mr-2 text-secondary" /> Adapted Macros per Serving
+            <Sparkles className="h-6 w-6 mr-2 text-secondary" /> Adapted Macros
           </h3>
+          {/* Serving size selector */}
+          <div className="flex items-center justify-between mb-4 p-3 bg-muted rounded-lg">
+            <span className="text-sm font-medium">Log how many servings?</span>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={decrementServings}
+                disabled={servingsToLog <= 1}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg w-8 text-center">{servingsToLog}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={incrementServings}
+                disabled={servingsToLog >= recipeServings}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground">/ {recipeServings} available</span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            {(Object.keys(adaptedMacrosPerServing) as Array<keyof RecipeMacros>).map(key => (
+            {(Object.keys(scaledMacros) as Array<keyof RecipeMacros>).map(key => (
               <div key={key} className="p-3 bg-muted rounded-lg text-center">
                 <div className="flex items-center justify-center mb-1">
                    {macroIconMapping[key] || <Sparkles className="h-4 w-4 mr-1.5 text-muted-foreground" />}
                    <p className="font-semibold capitalize">{key}</p>
                 </div>
-                <p>{adaptedMacrosPerServing[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
+                <p>{scaledMacros[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
+                {servingsToLog !== 1 && (
+                  <p className="text-xs text-muted-foreground">({adaptedMacrosPerServing[key]}{key === 'calories' ? ' kcal' : ' g'} × {servingsToLog})</p>
+                )}
               </div>
             ))}
           </div>
@@ -155,14 +200,14 @@ export default function AdaptedRecipeDisplay({ adaptedRecipe, onLogAdaptedRecipe
         <p className="text-xs text-muted-foreground text-center sm:text-left">Recipe adapted by Chef Ath. Nutritional information is an estimate. Always verify ingredients for dietary compliance.</p>
         {user && onLogAdaptedRecipe && (
           <Button
-            onClick={() => onLogAdaptedRecipe(adaptedMacrosPerServing, adaptedRecipeName, actualServings)}
+            onClick={() => onLogAdaptedRecipe(scaledMacros, adaptedRecipeName, servingsToLog)}
             disabled={isLoggingAdaptedRecipe}
             size="sm"
             variant="secondary"
             className="w-full sm:w-auto"
           >
             {isLoggingAdaptedRecipe ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            Log Adapted Meal (1 Serving)
+            {isLoggingAdaptedRecipe ? 'Logging...' : `Log ${servingsToLog} Serving${servingsToLog !== 1 ? 's' : ''}`}
           </Button>
         )}
       </CardFooter>
