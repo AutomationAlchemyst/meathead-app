@@ -1,3 +1,4 @@
+<!-- cb: xxxxxxxxxxxxxxxxxxxx -->
 # MeatHead - Your AI-Powered Keto & Fitness Companion
 
 This is a NextJS starter in Firebase Studio that has been built into a comprehensive AI-powered application.
