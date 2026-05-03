@@ -303,14 +303,19 @@ export default function RecipeGeneratorPage() {
     mealType: "Any",
   });
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
-  const [trialAvailable, setTrialAvailable] = useState(true); 
+  const [trialAvailable, setTrialAvailable] = useState(true);
+
+  // Optimistic free generations counter to prevent double-spend before Firestore sync
+  const [optimisticFreeLeft, setOptimisticFreeLeft] = useState<number | null>(null);
 
   // Get free generations from userProfile (persisted in Firestore)
   const currentMonth = getCurrentMonth();
   const storedMonth = userProfile?.freeGenerationsMonth;
   const monthlyFreeGenerationsUsed = storedMonth === currentMonth ? (userProfile?.freeGenerationsUsedThisMonth ?? 0) : 0;
-  const freeGenerationsLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
-  const canUseFeature = isPremium || trialDaysRemaining > 0 || monthlyFreeGenerationsUsed < MAX_FREE_GENERATIONS;
+  const baseFreeLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
+  // Use optimistic value if set, otherwise fall back to Firestore value
+  const freeGenerationsLeft = optimisticFreeLeft !== null ? optimisticFreeLeft : baseFreeLeft;
+  const canUseFeature = isPremium || trialDaysRemaining > 0 || freeGenerationsLeft > 0;
 
   const handleGenerationInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -351,11 +356,25 @@ export default function RecipeGeneratorPage() {
     setFromIngredientsFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
   };
 
+  // Reset optimistic counter when Firestore profile updates (confirms server value)
+  useEffect(() => {
+    // onSnapshot delivers a new userProfile object each time — use this to
+    // detect when Firestore has confirmed the server-side generation count
+    setOptimisticFreeLeft(null);
+  }, [userProfile]);
+
   const incrementUsageAndCheckLimit = async () => {
     if (isPremium || trialDaysRemaining > 0) return; // Premium/trial users don't count
     if (!user) return;
-    
-    // Persist to Firestore
+
+    // Optimistic decrement: immediately update local UI to prevent double-spend
+    setOptimisticFreeLeft(prev => {
+      const current = prev !== null ? prev : baseFreeLeft;
+      const next = current - 1;
+      return next;
+    });
+
+    // Persist to Firestore (server source of truth)
     await incrementFreeGenerationsUsed(user.uid);
   };
 
