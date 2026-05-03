@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { Scale, TrendingUp, TrendingDown, Minus, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Dialog,
   DialogContent,
@@ -76,7 +77,15 @@ export const CurrentWeightCard = () => {
                 </>
                 ) : (
                 <div className="text-center py-4 flex flex-col justify-center items-center h-full">
-                    <p className="text-muted-foreground">No weight logged yet.</p>
+                    <EmptyState
+                        icon={Scale}
+                        title="No weight logged yet"
+                        description="Start tracking your weight to see your progress over time."
+                        action={{
+                            label: "Log Weight",
+                            onClick: () => setIsModalOpen(true),
+                        }}
+                    />
                 </div>
                 )}
             </CardContent>
