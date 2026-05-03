@@ -14,7 +14,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { incrementFreeGenerationsUsed } from '@/actions/user';
 import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import type { FoodLog } from '@/types';
 import AdaptedRecipeDisplay from '@/components/recipe-generator/AdaptedRecipeDisplay';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
@@ -262,6 +261,37 @@ function getCurrentMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+async function incrementFreeGenerationsUsedForUser(userId: string): Promise<number> {
+  const userDocRef = doc(db, 'users', userId);
+  const currentMonth = getCurrentMonth();
+
+  return runTransaction(db, async (transaction) => {
+    const userDoc = await transaction.get(userDocRef);
+    if (!userDoc.exists()) {
+      throw new Error('User profile not found. Please sign in again.');
+    }
+
+    const userData = userDoc.data();
+    const storedMonth = userData.freeGenerationsMonth;
+    const storedCount = typeof userData.freeGenerationsUsedThisMonth === 'number'
+      ? userData.freeGenerationsUsedThisMonth
+      : 0;
+    const nextCount = storedMonth === currentMonth ? storedCount + 1 : 1;
+
+    if (nextCount > MAX_FREE_GENERATIONS) {
+      throw new Error("You've used all your free generations for this month.");
+    }
+
+    transaction.update(userDocRef, {
+      freeGenerationsUsedThisMonth: nextCount,
+      freeGenerationsMonth: currentMonth,
+      updatedAt: serverTimestamp(),
+    });
+
+    return Math.max(0, MAX_FREE_GENERATIONS - nextCount);
+  });
+}
+
 export default function RecipeGeneratorPage() {
   const { user, userProfile, loading: authLoading, isPremium } = useAuth();
   const { toast } = useToast();
@@ -351,12 +381,24 @@ export default function RecipeGeneratorPage() {
     setFromIngredientsFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
   };
 
-  const incrementUsageAndCheckLimit = async () => {
-    if (isPremium || trialDaysRemaining > 0) return; // Premium/trial users don't count
-    if (!user) return;
-    
-    // Persist to Firestore
-    await incrementFreeGenerationsUsed(user.uid);
+  const incrementUsageAndCheckLimit = async (): Promise<boolean> => {
+    if (isPremium || trialDaysRemaining > 0) return true; // Premium/trial users don't count
+    if (!user) {
+      toast({ title: "Login Required", description: "Please log in to use Recipe Genie.", variant: "destructive" });
+      return false;
+    }
+
+    try {
+      await incrementFreeGenerationsUsedForUser(user.uid);
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Limit Reached",
+        description: error.message || "Could not update your free generation allowance. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   const handleGenerateRecipe = async (e: React.FormEvent) => {
@@ -365,7 +407,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free generations. Upgrade to Premium or start a trial for unlimited access!", variant: "destructive" });
       return;
     }
-    await incrementUsageAndCheckLimit();
+    if (!(await incrementUsageAndCheckLimit())) return;
 
     setIsLoadingGeneration(true);
     setGenerationError(null);
@@ -464,7 +506,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free adaptations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
-    await incrementUsageAndCheckLimit();
+    if (!(await incrementUsageAndCheckLimit())) return;
 
     setIsLoadingAdaptation(true);
     setAdaptationError(null);
@@ -504,7 +546,7 @@ export default function RecipeGeneratorPage() {
       toast({ title: "Limit Reached", description: "You've used all your free 'Fridge' generations. Upgrade or start a trial!", variant: "destructive" });
       return;
     }
-    await incrementUsageAndCheckLimit();
+    if (!(await incrementUsageAndCheckLimit())) return;
 
     setIsLoadingFromIngredients(true);
     setFromIngredientsError(null);
