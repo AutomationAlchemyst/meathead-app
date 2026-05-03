@@ -2,7 +2,6 @@
 
 import type { ReactElement } from 'react';
 import { useState, useEffect } from 'react';
-// NEW: Import motion from framer-motion
 import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -15,13 +14,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { incrementFreeGenerationsUsed } from '@/actions/user';
-import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap } from 'lucide-react';
+import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap, Minus, Plus } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { generateDetailedRecipe, type GenerateDetailedRecipeInput, type GenerateDetailedRecipeOutput, type RecipeIngredient, type RecipeStep, type RecipeMacros } from '@/ai/flows/generate-detailed-recipe-flow';
 import { adaptRecipe, type AdaptRecipeInput, type AdaptRecipeOutput } from '@/ai/flows/adapt-recipe-flow';
-import { generateRecipeFromIngredients, type GenerateRecipeFromIngredientsInput, type GenerateRecipeFromIngredientsOutput } from '@/ai/flows/generate-recipe-from-ingredients-flow'; 
+import { generateRecipeFromIngredients, type GenerateRecipeFromIngredientsInput, type GenerateRecipeFromIngredientsOutput } from '@/ai/flows/generate-recipe-from-ingredients-flow';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -32,14 +31,11 @@ import type { FoodLog } from '@/types';
 import AdaptedRecipeDisplay from '@/components/recipe-generator/AdaptedRecipeDisplay';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
 
-// NEW: Define the standard animation variants
 const containerVariants = {
   hidden: { opacity: 1 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
+    transition: { staggerChildren: 0.1 },
   },
 };
 
@@ -48,9 +44,7 @@ const itemVariants = {
   visible: {
     y: 0,
     opacity: 1,
-    transition: {
-      duration: 0.5,
-    },
+    transition: { duration: 0.5 },
   },
 };
 
@@ -58,7 +52,7 @@ const itemVariants = {
 const dietaryPreferences = ["Keto", "Keto Dairy-Free", "Keto Nut-Free", "Keto Vegetarian", "Low-Carb General"] as const;
 const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Side Dish", "Any"] as const;
 const cookingTimes = ["Quick (under 30 mins)", "Moderate (30-60 mins)", "No Preference"] as const;
-const spiceLevels = ["Mild", "Medium", "Spicy", "Any"] as const; 
+const spiceLevels = ["Mild", "Medium", "Spicy", "Any"] as const;
 const adaptationGoals = [
     { value: "makeKeto", label: "Make it Keto" },
     { value: "makeHalal", label: "Make it Halal" },
@@ -68,8 +62,30 @@ const adaptationGoals = [
 type AdaptationGoalValue = typeof adaptationGoals[number]['value'];
 
 
-function GeneratedRecipeDisplay({ recipe, onLogRecipe, isLoggingRecipe, recipeSource }: { recipe: GenerateDetailedRecipeOutput; onLogRecipe: (recipeToLog: GenerateDetailedRecipeOutput) => Promise<void>; isLoggingRecipe: boolean; recipeSource?: string; }) {
+interface GeneratedRecipeDisplayProps {
+  recipe: GenerateDetailedRecipeOutput;
+  servingsToLog: number;
+  onServingsChange: (servings: number) => void;
+  onLogRecipe: (recipeToLog: GenerateDetailedRecipeOutput, servingsToLog: number) => Promise<void>;
+  isLoggingRecipe: boolean;
+  recipeSource?: string;
+}
+
+function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLogRecipe, isLoggingRecipe, recipeSource }: GeneratedRecipeDisplayProps) {
   const { user } = useAuth();
+
+  // Scale macros for the selected number of servings
+  const scale = servingsToLog / recipe.servings;
+  const scaledMacros: RecipeMacros = {
+    calories: Math.round(recipe.macrosPerServing.calories * scale),
+    protein: Math.round(recipe.macrosPerServing.protein * scale * 10) / 10,
+    carbs: Math.round(recipe.macrosPerServing.carbs * scale * 10) / 10,
+    fat: Math.round(recipe.macrosPerServing.fat * scale * 10) / 10,
+  };
+
+  const incrementServings = () => onServingsChange(Math.min(servingsToLog + 1, recipe.servings));
+  const decrementServings = () => onServingsChange(Math.max(servingsToLog - 1, 1));
+
   return (
     <Card className="mt-8 shadow-xl">
       <CardHeader className="bg-primary/10 p-6 rounded-t-lg">
@@ -131,12 +147,43 @@ function GeneratedRecipeDisplay({ recipe, onLogRecipe, isLoggingRecipe, recipeSo
         <Separator />
 
         <div>
-          <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><Sparkles className="h-6 w-6 mr-2 text-primary" />Macros per Serving</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><Sparkles className="h-6 w-6 mr-2 text-primary" />Macros</h3>
+          {/* Serving size selector */}
+          <div className="flex items-center justify-between mb-4 p-3 bg-muted rounded-lg">
+            <span className="text-sm font-medium">Log how many servings?</span>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={decrementServings}
+                disabled={servingsToLog <= 1}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="font-bold text-lg w-8 text-center">{servingsToLog}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={incrementServings}
+                disabled={servingsToLog >= recipe.servings}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <span className="text-xs text-muted-foreground">/ {recipe.servings} available</span>
+            </div>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            {(Object.keys(recipe.macrosPerServing) as Array<keyof RecipeMacros>).map(key => (
+            {(Object.keys(scaledMacros) as Array<keyof RecipeMacros>).map(key => (
               <div key={key} className="p-3 bg-muted rounded-lg text-center">
                 <p className="font-semibold capitalize">{key}</p>
-                <p>{recipe.macrosPerServing[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
+                <p>{scaledMacros[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
+                {servingsToLog !== 1 && (
+                  <p className="text-xs text-muted-foreground">({recipe.macrosPerServing[key]}{key === 'calories' ? ' kcal' : ' g'} &times; {servingsToLog})</p>
+                )}
               </div>
             ))}
           </div>
@@ -159,14 +206,14 @@ function GeneratedRecipeDisplay({ recipe, onLogRecipe, isLoggingRecipe, recipeSo
       <CardFooter className="p-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
         <p className="text-xs text-muted-foreground text-center sm:text-left">Recipe generated by Chef Ath. Nutritional information is an estimate. Always verify ingredients for dietary compliance.</p>
         {user && (
-          <Button 
-            onClick={() => onLogRecipe(recipe)} 
-            disabled={isLoggingRecipe} 
+          <Button
+            onClick={() => onLogRecipe(recipe, servingsToLog)}
+            disabled={isLoggingRecipe}
             size="sm"
             className="w-full sm:w-auto"
           >
             {isLoggingRecipe ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {isLoggingRecipe ? 'Logging Meal...' : 'Log This Meal (1 Serving)'}
+            {isLoggingRecipe ? 'Logging Meal...' : `Log ${servingsToLog} Serving${servingsToLog !== 1 ? 's' : ''}`}
           </Button>
         )}
       </CardFooter>
@@ -254,9 +301,9 @@ function RecipeAdaptationSkeleton() {
 }
 
 
-const MAX_FREE_GENERATIONS = 3; 
 
-// Helper to get current month string
+const MAX_FREE_GENERATIONS = 3;
+
 function getCurrentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -277,11 +324,11 @@ export default function RecipeGeneratorPage() {
     cookingTimePreference: "No Preference",
     mealType: "Any",
     ensureHalal: false,
-    spiceLevel: "Any", 
+    spiceLevel: "Any",
   });
   const [adaptedRecipeOutput, setAdaptedRecipeOutput] = useState<AdaptRecipeOutput | null>(null);
   const [isLoadingAdaptation, setIsLoadingAdaptation] = useState(false);
-  const [isLoggingAdaptedRecipe, setIsLoggingAdaptedRecipe] = useState(false); 
+  const [isLoggingAdaptedRecipe, setIsLoggingAdaptedRecipe] = useState(false);
   const [adaptationError, setAdaptationError] = useState<string | null>(null);
   const [adaptationFormState, setAdaptationFormState] = useState<Partial<AdaptRecipeInput>>({
     adaptationGoal: "makeKeto",
@@ -305,6 +352,10 @@ export default function RecipeGeneratorPage() {
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
   const [trialAvailable, setTrialAvailable] = useState(true);
 
+  // Servings to log for generated recipes (separate from the AI recipe serving size)
+  const [generatedServingsToLog, setGeneratedServingsToLog] = useState(1);
+  const [fridgeServingsToLog, setFridgeServingsToLog] = useState(1);
+
   // Optimistic free generations counter to prevent double-spend before Firestore sync
   const [optimisticFreeLeft, setOptimisticFreeLeft] = useState<number | null>(null);
 
@@ -313,7 +364,6 @@ export default function RecipeGeneratorPage() {
   const storedMonth = userProfile?.freeGenerationsMonth;
   const monthlyFreeGenerationsUsed = storedMonth === currentMonth ? (userProfile?.freeGenerationsUsedThisMonth ?? 0) : 0;
   const baseFreeLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
-  // Use optimistic value if set, otherwise fall back to Firestore value
   const freeGenerationsLeft = optimisticFreeLeft !== null ? optimisticFreeLeft : baseFreeLeft;
   const canUseFeature = isPremium || trialDaysRemaining > 0 || freeGenerationsLeft > 0;
 
@@ -358,23 +408,25 @@ export default function RecipeGeneratorPage() {
 
   // Reset optimistic counter when Firestore profile updates (confirms server value)
   useEffect(() => {
-    // onSnapshot delivers a new userProfile object each time — use this to
-    // detect when Firestore has confirmed the server-side generation count
     setOptimisticFreeLeft(null);
   }, [userProfile]);
 
+  // Reset servings to log when a new recipe is generated
+  useEffect(() => {
+    setGeneratedServingsToLog(1);
+    setFridgeServingsToLog(1);
+  }, [generatedRecipe, fromIngredientsRecipe]);
+
   const incrementUsageAndCheckLimit = async () => {
-    if (isPremium || trialDaysRemaining > 0) return; // Premium/trial users don't count
+    if (isPremium || trialDaysRemaining > 0) return;
     if (!user) return;
 
-    // Optimistic decrement: immediately update local UI to prevent double-spend
     setOptimisticFreeLeft(prev => {
       const current = prev !== null ? prev : baseFreeLeft;
       const next = current - 1;
       return next;
     });
 
-    // Persist to Firestore (server source of truth)
     await incrementFreeGenerationsUsed(user.uid);
   };
 
@@ -400,7 +452,7 @@ export default function RecipeGeneratorPage() {
       servings: generationFormState.servings || 2,
       specificRequests: generationFormState.specificRequests,
       ensureHalal: generationFormState.ensureHalal || false,
-      spiceLevel: generationFormState.spiceLevel || "Any", 
+      spiceLevel: generationFormState.spiceLevel || "Any",
     };
 
     try {
@@ -415,7 +467,7 @@ export default function RecipeGeneratorPage() {
     }
   };
 
-  const handleLogRecipe = async (recipeToLog: GenerateDetailedRecipeOutput | null, source: 'generate' | 'fridge') => {
+  const handleLogRecipe = async (recipeToLog: GenerateDetailedRecipeOutput | null, servingsToLog: number, source: 'generate' | 'fridge') => {
     if (!user) {
       toast({ title: "Login Required", description: "Please log in to save this meal to your food log.", variant: "destructive" });
       return;
@@ -429,19 +481,21 @@ export default function RecipeGeneratorPage() {
     if (source === 'fridge') setIsLoggingFromIngredientsRecipe(true);
 
     try {
+      // Scale macros proportionally to servings being logged
+      const scale = servingsToLog / recipeToLog.servings;
       const foodLogEntry: Omit<FoodLog, 'id' | 'userId'> = {
         foodItem: recipeToLog.recipeName,
-        quantity: `1 serving (original recipe for ${recipeToLog.servings})`,
-        calories: recipeToLog.macrosPerServing.calories,
-        protein: recipeToLog.macrosPerServing.protein,
-        carbs: recipeToLog.macrosPerServing.carbs,
-        fat: recipeToLog.macrosPerServing.fat,
+        quantity: `${servingsToLog} of ${recipeToLog.servings} servings`,
+        calories: Math.round(recipeToLog.macrosPerServing.calories * scale),
+        protein: Math.round(recipeToLog.macrosPerServing.protein * scale * 10) / 10,
+        carbs: Math.round(recipeToLog.macrosPerServing.carbs * scale * 10) / 10,
+        fat: Math.round(recipeToLog.macrosPerServing.fat * scale * 10) / 10,
         loggedAt: serverTimestamp(),
       };
 
       const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
       await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
-      toast({ title: "Meal Logged!", description: `${recipeToLog.recipeName} (1 serving) added to your food log.` });
+      toast({ title: "Meal Logged!", description: `${recipeToLog.recipeName} (${servingsToLog} serving${servingsToLog !== 1 ? 's' : ''}) added to your food log.` });
     } catch (error: any) {
       toast({ title: "Logging Failed", description: error.message || "Could not log this meal.", variant: "destructive" });
     } finally {
@@ -450,7 +504,7 @@ export default function RecipeGeneratorPage() {
     }
   };
 
-  const handleLogAdaptedRecipe = async (macros: RecipeMacros, recipeName: string, servingsFromRecipe: number) => {
+  const handleLogAdaptedRecipe = async (macros: RecipeMacros, recipeName: string, servingsToLog: number) => {
     if (!user) {
       toast({ title: "Login Required", description: "Please log in to save this meal.", variant: "destructive" });
       return;
@@ -459,7 +513,7 @@ export default function RecipeGeneratorPage() {
     try {
       const foodLogEntry: Omit<FoodLog, 'id' | 'userId'> = {
         foodItem: recipeName,
-        quantity: `1 serving (adapted from recipe for ${servingsFromRecipe})`,
+        quantity: `${servingsToLog} serving(s)`,
         calories: macros.calories,
         protein: macros.protein,
         carbs: macros.carbs,
@@ -468,7 +522,7 @@ export default function RecipeGeneratorPage() {
       };
       const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
       await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
-      toast({ title: "Meal Logged!", description: `${recipeName} (1 serving of adapted recipe) added to your food log.` });
+      toast({ title: "Meal Logged!", description: `${recipeName} (${servingsToLog} serving${servingsToLog !== 1 ? 's' : ''}) added to your food log.` });
     } catch (error: any) {
       toast({ title: "Logging Failed", description: error.message || "Could not log this adapted meal.", variant: "destructive" });
     } finally {
@@ -566,8 +620,8 @@ export default function RecipeGeneratorPage() {
   };
 
   const startTrial = () => {
-    setTrialDaysRemaining(3); 
-    setTrialAvailable(false); 
+    setTrialDaysRemaining(3);
+    setTrialAvailable(false);
     toast({ title: "Premium Trial Started!", description: "Enjoy full access to Recipe Genie for 3 days." });
   };
 
@@ -583,7 +637,7 @@ export default function RecipeGeneratorPage() {
       </AppLayout>
     );
   }
-  
+
   const renderFreemiumHeader = () => {
     if (isPremium) {
       return (
@@ -612,14 +666,13 @@ export default function RecipeGeneratorPage() {
         </Alert>
       );
     }
-    return null; 
+    return null;
   };
 
 
   return (
     <AppLayout>
       <div className="container mx-auto py-8 px-4">
-        {/* NEW: Wrap main content in motion.div */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
@@ -725,9 +778,9 @@ export default function RecipeGeneratorPage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="servings">Number of Servings</Label>
+                                    <Label htmlFor="servings">Number of Servings (for AI to generate)</Label>
                                     <Input id="servings" name="servings" type="number" min="1" max="12" value={generationFormState.servings || ''} onChange={handleGenerationNumberInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                                    <p className="text-xs text-muted-foreground">Note: Logging will always be for 1 serving's macros.</p>
+                                    <p className="text-xs text-muted-foreground">This controls the recipe serving size. Use the stepper below the recipe to log a different amount.</p>
                                 </div>
                                 </div>
                             <div className="space-y-2 flex items-center">
@@ -805,7 +858,7 @@ export default function RecipeGeneratorPage() {
                                 </Select>
                                 </div>
                                 <div className="space-y-2">
-                                <Label htmlFor="fridgeServings">Number of Servings</Label>
+                                <Label htmlFor="fridgeServings">Number of Servings (for AI to generate)</Label>
                                 <Input id="fridgeServings" name="servings" type="number" min="1" max="12" value={fromIngredientsFormState.servings || ''} onChange={handleFromIngredientsNumberInputChange} disabled={isLoadingAnyFeature || authLoading}/>
                                 </div>
                             </div>
@@ -924,7 +977,6 @@ export default function RecipeGeneratorPage() {
                 </Tabs>
             </motion.div>
 
-            {/* NEW: AnimatePresence wrapper for results */}
             <AnimatePresence>
                 {isLoadingGeneration && <motion.div key="gen-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeGeneratorSkeleton /></motion.div>}
                 {generationError && !isLoadingGeneration && (
@@ -940,7 +992,9 @@ export default function RecipeGeneratorPage() {
                     <motion.div key="gen-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
                         <GeneratedRecipeDisplay
                             recipe={generatedRecipe}
-                            onLogRecipe={(recipe) => handleLogRecipe(recipe, 'generate')}
+                            servingsToLog={generatedServingsToLog}
+                            onServingsChange={setGeneratedServingsToLog}
+                            onLogRecipe={(recipe, servings) => handleLogRecipe(recipe, servings, 'generate')}
                             isLoggingRecipe={isLoggingGeneratedRecipe}
                             recipeSource="generate"
                         />
@@ -961,7 +1015,9 @@ export default function RecipeGeneratorPage() {
                     <motion.div key="fridge-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
                         <GeneratedRecipeDisplay
                             recipe={fromIngredientsRecipe}
-                            onLogRecipe={(recipe) => handleLogRecipe(recipe, 'fridge')}
+                            servingsToLog={fridgeServingsToLog}
+                            onServingsChange={setFridgeServingsToLog}
+                            onLogRecipe={(recipe, servings) => handleLogRecipe(recipe, servings, 'fridge')}
                             isLoggingRecipe={isLoggingFromIngredientsRecipe}
                             recipeSource="fridge"
                         />
