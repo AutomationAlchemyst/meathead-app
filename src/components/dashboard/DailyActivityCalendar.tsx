@@ -92,7 +92,7 @@ export const DailyActivityCalendar = () => {
         <CardTitle>Monthly Logging Consistency</CardTitle>
         <CardDescription>Your food, water, and workout activity at a glance.</CardDescription>
       </CardHeader>
-      <CardContent className="flex justify-center">
+      <CardContent className="flex flex-col items-center">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-[300px] p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -118,6 +118,11 @@ export const DailyActivityCalendar = () => {
               ),
             }}
           />
+          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><Utensils className="h-3 w-3 text-green-500" /> Food</span>
+            <span className="flex items-center gap-1"><Droplet className="h-3 w-3 text-blue-500" /> Water</span>
+            <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3 text-red-500" /> Workout</span>
+          </div>
         )}
       </CardContent>
     </Card>
