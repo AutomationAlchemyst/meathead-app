@@ -125,6 +125,11 @@ export const FoodLogForm = () => {
 
     try {
       const parsedItems = await parseNaturalLanguageFoodInput({ naturalLanguageQuery: data.naturalLanguageQuery });
+      
+      if (!Array.isArray(parsedItems) && 'error' in parsedItems) {
+        throw new Error(`AI Error: ${parsedItems.error}\nDetails: ${JSON.stringify(parsedItems.details)}`);
+      }
+      
       setIsParsing(false);
       if (!parsedItems || parsedItems.length === 0) throw new Error("Could not understand the meal description.");
 

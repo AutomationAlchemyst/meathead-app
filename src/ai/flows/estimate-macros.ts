@@ -25,8 +25,13 @@ const EstimateMacrosOutputSchema = z.object({
 });
 export type EstimateMacrosOutput = z.infer<typeof EstimateMacrosOutputSchema>;
 
-export async function estimateMacros(input: EstimateMacrosInput): Promise<EstimateMacrosOutput> {
-  return estimateMacrosFlow(input);
+export async function estimateMacros(input: EstimateMacrosInput): Promise<EstimateMacrosOutput | { error: string, details?: any }> {
+  try {
+    return await estimateMacrosFlow(input);
+  } catch (error: any) {
+    console.error("Server Action Error in estimateMacros:", error);
+    return { error: error.message || "Unknown error", details: error.stack || error };
+  }
 }
 
 const prompt = ai.definePrompt({

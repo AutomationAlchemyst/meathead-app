@@ -25,8 +25,13 @@ export type ParsedFoodItem = z.infer<typeof ParsedFoodItemSchema>;
 const ParseNaturalLanguageFoodOutputSchema = z.array(ParsedFoodItemSchema).describe('A list of identified food items and their quantities.');
 export type ParseNaturalLanguageFoodOutput = z.infer<typeof ParseNaturalLanguageFoodOutputSchema>;
 
-export async function parseNaturalLanguageFoodInput(input: ParseNaturalLanguageFoodInput): Promise<ParseNaturalLanguageFoodOutput> {
-  return parseNaturalLanguageFoodInputFlow(input);
+export async function parseNaturalLanguageFoodInput(input: ParseNaturalLanguageFoodInput): Promise<ParseNaturalLanguageFoodOutput | { error: string, details?: any }> {
+  try {
+    return await parseNaturalLanguageFoodInputFlow(input);
+  } catch (error: any) {
+    console.error("Server Action Error in parseNaturalLanguageFoodInput:", error);
+    return { error: error.message || "Unknown error", details: error.stack || error };
+  }
 }
 
 const prompt = ai.definePrompt({
