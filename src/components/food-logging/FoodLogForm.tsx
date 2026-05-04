@@ -138,6 +138,7 @@ export const FoodLogForm = () => {
         try {
           const macros = await estimateMacros({ foodItem: item.foodItem, quantity: item.quantity });
           if (macros && 'error' in macros) throw new Error(`AI Error estimating macros: ${macros.error}`);
+          if (!macros || typeof (macros as any).calories !== 'number') throw new Error(`AI returned invalid macros for ${item.foodItem}.`);
           return { ...item, ...macros } as EstimatedItemBase;
         } catch (error: any) { 
           throw new Error(error.message || "Unknown macro error");
