@@ -34,6 +34,9 @@ export const TodaysFoodLogList = (): ReactElement => {
         querySnapshot.forEach((doc) => { fetchedLogs.push({ id: doc.id, ...doc.data() } as FoodLog); });
         setLogs(fetchedLogs);
         setIsLoading(false);
+      }, (error) => {
+        console.error("TodaysFoodLogList onSnapshot error:", error);
+        setIsLoading(false);
       });
   
       return () => unsubscribe();
