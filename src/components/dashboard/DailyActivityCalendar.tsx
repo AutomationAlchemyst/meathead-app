@@ -99,30 +99,32 @@ export const DailyActivityCalendar = () => {
             <p className="mt-2 text-sm text-muted-foreground">Loading calendar...</p>
           </div>
         ) : (
-          <Calendar
-            mode="single"
-            selected={new Date()}
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            className="p-0"
-            components={{
-              DayContent: ({ date }) => (
-                <div className="relative h-full w-full flex flex-col items-center justify-center">
-                  <span className="text-[10px] sm:text-sm leading-none">{date.getDate()}</span>
-                  <div className="absolute bottom-0 flex space-x-0.5">
-                    {dayHasFoodLog(date) && <Utensils className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-green-500" title="Food Logged" />}
-                    {dayHasWaterLog(date) && <Droplet className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-blue-500" title="Water Logged" />}
-                    {dayHasWorkoutLog(date) && <Dumbbell className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-red-500" title="Workout Logged" />}
+          <>
+            <Calendar
+              mode="single"
+              selected={new Date()}
+              month={currentMonth}
+              onMonthChange={setCurrentMonth}
+              className="p-0"
+              components={{
+                DayContent: ({ date }) => (
+                  <div className="relative h-full w-full flex flex-col items-center justify-center">
+                    <span className="text-[10px] sm:text-sm leading-none">{date.getDate()}</span>
+                    <div className="absolute bottom-0 flex space-x-0.5">
+                      {dayHasFoodLog(date) && <Utensils className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-green-500" title="Food Logged" />}
+                      {dayHasWaterLog(date) && <Droplet className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-blue-500" title="Water Logged" />}
+                      {dayHasWorkoutLog(date) && <Dumbbell className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-red-500" title="Workout Logged" />}
+                    </div>
                   </div>
-                </div>
-              ),
-            }}
-          />
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Utensils className="h-3 w-3 text-green-500" /> Food</span>
-            <span className="flex items-center gap-1"><Droplet className="h-3 w-3 text-blue-500" /> Water</span>
-            <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3 text-red-500" /> Workout</span>
-          </div>
+                ),
+              }}
+            />
+            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Utensils className="h-3 w-3 text-green-500" /> Food</span>
+              <span className="flex items-center gap-1"><Droplet className="h-3 w-3 text-blue-500" /> Water</span>
+              <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3 text-red-500" /> Workout</span>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
