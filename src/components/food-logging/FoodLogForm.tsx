@@ -137,17 +137,23 @@ export const FoodLogForm = () => {
       const itemsWithMacros: EstimatedItemBase[] = await Promise.all(parsedItems.map(async (item) => {
         try {
           const macros = await estimateMacros({ foodItem: item.foodItem, quantity: item.quantity });
-          return { ...item, ...macros };
-        } catch { return { ...item, calories: 0, protein: 0, carbs: 0, fat: 0 }; }
+          if (macros && 'error' in macros) throw new Error(`AI Error estimating macros: ${macros.error}`);
+          return { ...item, ...macros } as EstimatedItemBase;
+        } catch (error: any) { 
+          throw new Error(error.message || "Unknown macro error");
+        }
       }));
       setIsEstimatingMacros(false);
 
       setIsGettingKetoGuidance(true);
       const finalProcessedItems: EnhancedEstimatedItem[] = await Promise.all(itemsWithMacros.map(async (item) => {
         try {
-          const guidance = await getKetoGuidance(item);
-          return { ...item, ...guidance };
-        } catch { return { ...item, isKetoFriendly: false, suggestion: "Could not get keto guidance." }; }
+          const guidance = await getKetoGuidance(item as any);
+          if (guidance && 'error' in guidance) throw new Error(`AI Error getting keto guidance: ${guidance.error}`);
+          return { ...item, ...guidance } as EnhancedEstimatedItem;
+        } catch (error: any) {
+          throw new Error(error.message || "Unknown keto guidance error");
+        }
       }));
       setIsGettingKetoGuidance(false);
       
