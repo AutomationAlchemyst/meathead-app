@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState }from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -56,10 +56,12 @@ export default function NotificationManager() {
           let actionElement: ToastActionElement | undefined = undefined;
           if (reminder.actionLink && reminder.actionLabel) {
               actionElement = (
-                  React.createElement(ToastAction, {
-                    altText: reminder.actionLabel,
-                    onClick: () => router.push(reminder.actionLink!)
-                  }, reminder.actionLabel)
+                  <ToastAction
+                    altText={reminder.actionLabel}
+                    onClick={() => router.push(reminder.actionLink!)}
+                  >
+                    {reminder.actionLabel}
+                  </ToastAction>
               );
           }
 

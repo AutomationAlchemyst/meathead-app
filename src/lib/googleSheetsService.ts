@@ -45,10 +45,10 @@ export async function appendFeedbackToSheet(feedback: FeedbackSubmission) {
     const sheets = await getGoogleSheetsClient();
     
     let submittedAtString: string;
-    if (feedback.submittedAt instanceof Timestamp) {
-        submittedAtString = feedback.submittedAt.toDate().toISOString();
-    } else if (feedback.submittedAt instanceof Date) {
-        submittedAtString = feedback.submittedAt.toISOString();
+    if (feedback.submittedAt && typeof (feedback.submittedAt as any).toDate === 'function') {
+        submittedAtString = (feedback.submittedAt as any).toDate().toISOString();
+    } else if (feedback.submittedAt && typeof (feedback.submittedAt as any).toISOString === 'function') {
+        submittedAtString = (feedback.submittedAt as any).toISOString();
     } else {
         // Fallback or handle error if timestamp is not in expected format
         submittedAtString = new Date().toISOString(); 
@@ -71,7 +71,7 @@ export async function appendFeedbackToSheet(feedback: FeedbackSubmission) {
       range: `${SHEET_NAME}!A1`, // Appends after the last row with data in this range/tab
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
-      resource: {
+      requestBody: {
         values: valuesToAppend,
       },
     };

@@ -90,7 +90,7 @@ export const WeeklyProgressChart = () => {
 
     // Check if there's any data to show
     const hasWeightData = chartData.some(d => d.weight !== null);
-    const hasCarbData = chartData.some(d => d.carbs > 0);
+    const hasCarbData = chartData.some(d => (d.carbs ?? 0) > 0);
 
     if (!hasWeightData && !hasCarbData) {
         return (

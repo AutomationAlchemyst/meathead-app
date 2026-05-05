@@ -17,7 +17,8 @@ import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertC
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { generateDetailedRecipe, type GenerateDetailedRecipeInput, type GenerateDetailedRecipeOutput, type RecipeIngredient, type RecipeStep, type RecipeMacros } from '@/ai/flows/generate-detailed-recipe-flow';
+import { generateDetailedRecipe, type GenerateDetailedRecipeInput } from '@/ai/flows/generate-detailed-recipe-flow';
+import type { GenerateDetailedRecipeOutput, RecipeIngredient, RecipeStep, RecipeMacros } from '@/ai/schemas/recipe-schemas';
 import { adaptRecipe, type AdaptRecipeInput, type AdaptRecipeOutput } from '@/ai/flows/adapt-recipe-flow';
 import { generateRecipeFromIngredients, type GenerateRecipeFromIngredientsInput, type GenerateRecipeFromIngredientsOutput } from '@/ai/flows/generate-recipe-from-ingredients-flow';
 
@@ -25,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
 import type { FoodLog } from '@/types';
 import AdaptedRecipeDisplay from '@/components/recipe-generator/AdaptedRecipeDisplay';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
@@ -120,7 +121,7 @@ function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLog
         <div>
           <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><ShoppingBasket className="h-6 w-6 mr-2 text-primary" />Ingredients</h3>
           <ul className="list-disc list-inside space-y-1.5 pl-2 columns-1 sm:columns-2 text-sm">
-            {recipe.ingredients.map((ing, index) => (
+            {recipe.ingredients.map((ing: RecipeIngredient, index: number) => (
               <li key={index}>
                 {ing.quantity} {ing.unit} {ing.name}
                 {ing.notes && <span className="text-muted-foreground text-xs"> ({ing.notes})</span>}
@@ -134,7 +135,7 @@ function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLog
         <div>
           <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><CookingPot className="h-6 w-6 mr-2 text-primary" />Instructions</h3>
           <ol className="space-y-3">
-            {recipe.instructions.map((step) => (
+            {recipe.instructions.map((step: RecipeStep) => (
               <li key={step.stepNumber} className="flex">
                 <Badge variant="secondary" className="mr-3 h-6 w-6 flex items-center justify-center text-primary font-bold shrink-0">{step.stepNumber}</Badge>
                 <p className="text-sm leading-relaxed">{step.instruction}</p>
@@ -177,7 +178,7 @@ function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLog
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             {(Object.keys(scaledMacros) as Array<keyof RecipeMacros>).map(key => (
-              <div key={key} className="p-3 bg-muted rounded-lg text-center">
+              <div key={String(key)} className="p-3 bg-muted rounded-lg text-center">
                 <p className="font-semibold capitalize">{key}</p>
                 <p>{scaledMacros[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
                 {servingsToLog !== 1 && (
@@ -194,7 +195,7 @@ function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLog
             <div>
               <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><Info className="h-6 w-6 mr-2 text-primary" />Chef Ath's Tips</h3>
               <ul className="list-disc list-inside space-y-1 pl-2 text-sm">
-                {recipe.tips.map((tip, index) => (
+                {recipe.tips.map((tip: string, index: number) => (
                   <li key={index}>{tip}</li>
                 ))}
               </ul>
@@ -527,7 +528,7 @@ export default function RecipeGeneratorPage() {
         protein: Math.round(recipeToLog.macrosPerServing.protein * scale * 10) / 10,
         carbs: Math.round(recipeToLog.macrosPerServing.carbs * scale * 10) / 10,
         fat: Math.round(recipeToLog.macrosPerServing.fat * scale * 10) / 10,
-        loggedAt: serverTimestamp(),
+        loggedAt: serverTimestamp() as any as Timestamp,
       };
 
       const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
@@ -555,7 +556,7 @@ export default function RecipeGeneratorPage() {
         protein: macros.protein,
         carbs: macros.carbs,
         fat: macros.fat,
-        loggedAt: serverTimestamp(),
+        loggedAt: serverTimestamp() as any as Timestamp,
       };
       const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
       await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);

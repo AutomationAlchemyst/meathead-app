@@ -111,9 +111,9 @@ export const DailyActivityCalendar = () => {
                   <div className="relative h-full w-full flex flex-col items-center justify-center">
                     <span className="text-[10px] sm:text-sm leading-none">{date.getDate()}</span>
                     <div className="absolute bottom-0 flex space-x-0.5">
-                      {dayHasFoodLog(date) && <Utensils className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-green-500" title="Food Logged" />}
-                      {dayHasWaterLog(date) && <Droplet className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-blue-500" title="Water Logged" />}
-                      {dayHasWorkoutLog(date) && <Dumbbell className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-red-500" title="Workout Logged" />}
+                      {dayHasFoodLog(date) && <span title="Food Logged"><Utensils className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-green-500" /></span>}
+                      {dayHasWaterLog(date) && <span title="Water Logged"><Droplet className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-blue-500" /></span>}
+                      {dayHasWorkoutLog(date) && <span title="Workout Logged"><Dumbbell className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-red-500" /></span>}
                     </div>
                   </div>
                 ),

@@ -129,3 +129,5 @@ const adaptRecipeFlow = ai.defineFlow(
     return output;
   }
 );
+
+export { type RecipeIngredient, type RecipeStep, type RecipeMacros } from '@/ai/schemas/recipe-schemas';

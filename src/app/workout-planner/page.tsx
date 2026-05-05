@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import WorkoutPlanSkeleton from '@/components/workout-planner/WorkoutPlanSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
 import { Button } from '@/components/ui/button';
 
@@ -110,7 +110,7 @@ export default function WorkoutPlannerPage(): ReactElement {
       });
 
       if (updateUserProfileInContext && userProfile) {
-        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: plan, updatedAt: serverTimestamp() });
+        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: plan, updatedAt: serverTimestamp() as any as Timestamp });
       }
       
       toast({
@@ -166,7 +166,7 @@ export default function WorkoutPlannerPage(): ReactElement {
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, { activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() });
       if (updateUserProfileInContext) {
-        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() });
+        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() as any as Timestamp });
       }
       toast({ title: "Workout Plan Adapted!", description: adaptedOutput.adaptationSummary || "Your plan has been adjusted.", duration: 7000 });
     } catch (e: any) {

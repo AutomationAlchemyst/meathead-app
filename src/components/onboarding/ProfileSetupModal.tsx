@@ -174,15 +174,15 @@ export function ProfileSetupModal() {
                   <Label htmlFor="r1">Sedentary (little or no exercise)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="light" id="r2" />
+                  <RadioGroupItem value="lightlyActive" id="r2" />
                   <Label htmlFor="r2">Lightly active (light exercise/sports 1-3 days/week)</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="moderate" id="r3" />
+                  <RadioGroupItem value="active" id="r3" />
                   <Label htmlFor="r3">Moderately active (moderate exercise/sports 3-5 days/week)</Label>
                 </div>
                  <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="very" id="r4" />
+                  <RadioGroupItem value="veryActive" id="r4" />
                   <Label htmlFor="r4">Very active (hard exercise/sports 6-7 days a week)</Label>
                 </div>
               </RadioGroup>

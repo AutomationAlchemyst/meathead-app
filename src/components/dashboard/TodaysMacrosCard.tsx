@@ -54,7 +54,7 @@ export const TodaysMacrosCard = () => {
     }
   }, [user, authLoading]);
 
-  const getProgressValue = (consumed?: number, target?: number) => {
+  const getProgressValue = (consumed?: number | null, target?: number | null) => {
     if (target && target > 0 && consumed && consumed > 0) { return Math.min((consumed / target) * 100, 100); }
     return 0;
   };

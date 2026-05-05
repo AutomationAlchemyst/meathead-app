@@ -14,7 +14,7 @@ export async function submitFeedback(
   userEmail: string | null,
   rating: string,
   comments: string
-): Promise<{ success?: boolean; error?: string | z.ZodError['formErrors'] }> {
+): Promise<{ success?: boolean; error?: any }> {
   if (!userId) {
     return { error: "User not authenticated." };
   }
@@ -52,7 +52,7 @@ export async function submitFeedback(
         userEmail: parsedData.data.userEmail,
         rating: parsedData.data.rating,
         comments: parsedData.data.comments,
-        submittedAt: new Date() 
+        submittedAt: Timestamp.now() as any
     };
 
     appendFeedbackToSheet(feedbackForSheet)

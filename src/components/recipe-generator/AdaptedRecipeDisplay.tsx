@@ -166,10 +166,10 @@ export default function AdaptedRecipeDisplay({ adaptedRecipe, onLogAdaptedRecipe
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             {(Object.keys(scaledMacros) as Array<keyof RecipeMacros>).map(key => (
-              <div key={key} className="p-3 bg-muted rounded-lg text-center">
+              <div key={key as string} className="p-3 bg-muted rounded-lg text-center">
                 <div className="flex items-center justify-center mb-1">
                    {macroIconMapping[key] || <Sparkles className="h-4 w-4 mr-1.5 text-muted-foreground" />}
-                   <p className="font-semibold capitalize">{key}</p>
+                   <p className="font-semibold capitalize">{key as string}</p>
                 </div>
                 <p>{scaledMacros[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
                 {servingsToLog !== 1 && (

@@ -62,7 +62,7 @@ export const FoodLogForm = () => {
   // --- NEW --- Setup Speech Recognition API
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = false;
@@ -187,7 +187,13 @@ export const FoodLogForm = () => {
     }
   };
 
-  const getButtonText = () => { /* ... (no changes here) ... */ };
+  const getButtonText = () => {
+    if (isParsing) return "Understanding...";
+    if (isEstimatingMacros) return "Estimating...";
+    if (isGettingKetoGuidance) return "Analyzing...";
+    if (isSubmitting) return "Logging...";
+    return "Log Meal";
+  };
   const renderFreemiumHeader = () => { /* ... (no changes here) ... */ return null; };
 
   return (

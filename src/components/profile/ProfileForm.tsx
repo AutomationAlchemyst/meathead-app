@@ -214,11 +214,11 @@ export default function ProfileForm() {
         let journeyStartDateJS: Date | null = null;
         if (profile.journeyStartDate instanceof Timestamp) {
             journeyStartDateJS = profile.journeyStartDate.toDate();
-        } else if (typeof profile.journeyStartDate === 'string') { 
-            const parsedDate = parseISO(profile.journeyStartDate);
+        } else if (typeof (profile.journeyStartDate as any) === 'string') { 
+            const parsedDate = parseISO(profile.journeyStartDate as any);
             if (isValidDateFn(parsedDate)) journeyStartDateJS = parsedDate;
-        } else if (profile.journeyStartDate instanceof Date && isValidDateFn(profile.journeyStartDate)) {
-            journeyStartDateJS = profile.journeyStartDate;
+        } else if ((profile.journeyStartDate as any) instanceof Date && isValidDateFn(profile.journeyStartDate as any)) {
+            journeyStartDateJS = profile.journeyStartDate as any;
         }
 
         const defaultFormValues: ProfileFormValues = {
@@ -311,7 +311,7 @@ export default function ProfileForm() {
 
     const dataToUpdate: Partial<UserProfile> & { updatedAt?: any } = {};
     dataToUpdate.displayName = data.displayName === '' ? null : (data.displayName || null);
-    dataToUpdate.myWhy = data.myWhy === '' ? null : (data.myWhy || null);
+    dataToUpdate.myWhy = (data.myWhy === '' ? null : (data.myWhy || null)) as any;
     dataToUpdate.currentWeight = data.currentWeight || null;
     dataToUpdate.targetWeight = data.targetWeight || null;
     dataToUpdate.activityLevel = data.activityLevel || null;
@@ -338,10 +338,10 @@ export default function ProfileForm() {
         targetWaterIntake: currentBaselineProfile?.targetWaterIntake || null,
         journeyStartDate: currentBaselineProfile?.journeyStartDate instanceof Timestamp
                                 ? currentBaselineProfile.journeyStartDate.toDate()
-                                : (currentBaselineProfile?.journeyStartDate && typeof currentBaselineProfile.journeyStartDate === 'string' && isValidDateFn(parseISO(currentBaselineProfile.journeyStartDate)))
-                                  ? parseISO(currentBaselineProfile.journeyStartDate)
-                                  : (currentBaselineProfile?.journeyStartDate instanceof Date && isValidDateFn(currentBaselineProfile.journeyStartDate))
-                                    ? currentBaselineProfile.journeyStartDate
+                                : (currentBaselineProfile?.journeyStartDate && typeof (currentBaselineProfile.journeyStartDate as any) === 'string' && isValidDateFn(parseISO(currentBaselineProfile?.journeyStartDate as any)))
+                                  ? parseISO(currentBaselineProfile?.journeyStartDate as any)
+                                  : ((currentBaselineProfile?.journeyStartDate as any) instanceof Date && isValidDateFn(currentBaselineProfile?.journeyStartDate as any))
+                                    ? (currentBaselineProfile?.journeyStartDate as any)
                                     : null,
     };
     
@@ -466,10 +466,10 @@ export default function ProfileForm() {
   let viewJourneyStartDate: string | null = null;
     if (viewProfile?.journeyStartDate instanceof Timestamp) {
         viewJourneyStartDate = format(viewProfile.journeyStartDate.toDate(), "PPP");
-    } else if (viewProfile?.journeyStartDate && typeof viewProfile.journeyStartDate === 'string' && isValidDateFn(parseISO(viewProfile.journeyStartDate))) {
-        viewJourneyStartDate = format(parseISO(viewProfile.journeyStartDate), "PPP");
-    } else if (viewProfile?.journeyStartDate instanceof Date && isValidDateFn(viewProfile.journeyStartDate)) {
-        viewJourneyStartDate = format(viewProfile.journeyStartDate, "PPP");
+    } else if (viewProfile?.journeyStartDate && typeof (viewProfile.journeyStartDate as any) === 'string' && isValidDateFn(parseISO(viewProfile?.journeyStartDate as any))) {
+        viewJourneyStartDate = format(parseISO(viewProfile?.journeyStartDate as any), "PPP");
+    } else if ((viewProfile?.journeyStartDate as any) instanceof Date && isValidDateFn(viewProfile?.journeyStartDate as any)) {
+        viewJourneyStartDate = format(viewProfile?.journeyStartDate as any, "PPP");
     }
 
   const viewCurrentWeight = viewProfile?.currentWeight;

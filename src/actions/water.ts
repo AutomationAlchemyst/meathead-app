@@ -16,7 +16,7 @@ const AddWaterLogSchema = z.object({
 export async function addWaterLog(
   userId: string,
   formData: FormData
-): Promise<{ success?: boolean; error?: string | z.ZodError['formErrors'] }> {
+): Promise<{ success?: boolean; error?: any }> {
   if (!userId) {
     return { error: "User not authenticated." };
   }
@@ -82,7 +82,7 @@ export async function updateWaterLog(
   logId: string, 
   userId: string, 
   newAmount: number
-): Promise<{ success?: boolean; error?: string | z.ZodError['formErrors'] }> {
+): Promise<{ success?: boolean; error?: any }> {
   if (!userId) {
     return { error: "User not authenticated." };
   }

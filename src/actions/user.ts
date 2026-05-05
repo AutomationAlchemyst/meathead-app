@@ -65,7 +65,7 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 
   const rawData = Object.fromEntries(formData);
-  const processedData = { ...rawData };
+  const processedData: Record<string, any> = { ...rawData };
   ['currentWeight', 'targetWeight', 'targetCalories', 'targetProtein', 'targetCarbs', 'targetFat', 'targetWaterIntake'].forEach(key => {
     if (processedData[key] === '') {
       processedData[key] = null;
@@ -81,7 +81,7 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   
   const dataToUpdate: Partial<UserProfile> = {};
   if (parsedData.data.displayName !== undefined) dataToUpdate.displayName = parsedData.data.displayName === '' ? null : parsedData.data.displayName;
-  if (parsedData.data.myWhy !== undefined) dataToUpdate.myWhy = parsedData.data.myWhy === '' ? null : parsedData.data.myWhy; // Added myWhy to the update object
+  if (parsedData.data.myWhy !== undefined) dataToUpdate.myWhy = parsedData.data.myWhy === '' ? '' : parsedData.data.myWhy;
   if (parsedData.data.currentWeight !== undefined) dataToUpdate.currentWeight = parsedData.data.currentWeight;
   if (parsedData.data.targetWeight !== undefined) dataToUpdate.targetWeight = parsedData.data.targetWeight;
   if (parsedData.data.activityLevel !== undefined) dataToUpdate.activityLevel = parsedData.data.activityLevel;

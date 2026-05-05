@@ -32,7 +32,8 @@ const WorkoutPlanFormSchema = z.object({
   specificRequests: z.string().optional(),
 });
 
-type WorkoutPlanFormValues = z.infer<typeof WorkoutPlanFormSchema>;
+type WorkoutPlanFormInput = z.input<typeof WorkoutPlanFormSchema>;
+type WorkoutPlanFormOutput = z.infer<typeof WorkoutPlanFormSchema>;
 
 interface WorkoutPlanFormProps {
   onSubmit: (data: GenerateWorkoutPlanInput) => Promise<void>;
@@ -42,8 +43,8 @@ interface WorkoutPlanFormProps {
 }
 
 export default function WorkoutPlanForm({ onSubmit, isLoading, canGenerate, freeGenerationsLeft }: WorkoutPlanFormProps): ReactElement {
-  const form = useForm<WorkoutPlanFormValues>({
-    resolver: zodResolver(WorkoutPlanFormSchema),
+  const form = useForm<WorkoutPlanFormOutput>({
+    resolver: zodResolver(WorkoutPlanFormSchema) as any,
     defaultValues: {
       fitnessLevel: 'beginner',
       primaryGoal: 'generalFitness',
@@ -51,17 +52,15 @@ export default function WorkoutPlanForm({ onSubmit, isLoading, canGenerate, free
       daysPerWeek: 3,
       sessionDurationMinutes: 45,
       focusAreas: [],
-      excludedExercises: '',
+      excludedExercises: '' as any,
       jointFriendly: false,
       specificRequests: '',
     },
   });
 
-  const handleFormSubmit = (values: WorkoutPlanFormValues) => {
+  const handleFormSubmit = (values: WorkoutPlanFormOutput) => {
     if (!canGenerate) return; // Should be caught by button disabled state too
-    const submissionData: GenerateWorkoutPlanInput = {
-      ...values,
-    };
+    const submissionData = values as unknown as GenerateWorkoutPlanInput;
     onSubmit(submissionData);
   };
 

@@ -46,14 +46,6 @@ if (serviceAccountJsonString) {
 }
 
 
-// Helper function to read the request body as a buffer (Stripe requires this for signature verification)
-async function buffer(readable: ReadableStream<Uint8Array>) {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-  }
-  return Buffer.concat(chunks);
-}
 
 export async function POST(req: Request) {
   console.log('[API /stripe-webhook] Received POST request.');
@@ -71,8 +63,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Server database configuration error.' }, { status: 500 });
   }
 
-  const buf = await buffer(req.body!);
-  const sig = headers().get('stripe-signature');
+  const rawBody = await req.text();
+  const headersList = await headers();
+  const sig = headersList.get('stripe-signature');
 
   if (!sig) {
     console.error('[API /stripe-webhook] Error: Missing stripe-signature header.');
@@ -82,7 +75,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(buf.toString(), sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
     console.log('[API /stripe-webhook] Stripe event constructed successfully:', event.type, 'ID:', event.id);
   } catch (err: any) {
     console.error('[API /stripe-webhook] Webhook signature verification failed:', err.message);
