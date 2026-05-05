@@ -18,7 +18,7 @@ process.env.FIREBASE_SERVICE_ACCOUNT_JSON_STRING = '{}';
 // Mock Next.js headers
 vi.mock('next/headers', () => {
   return {
-    headers: vi.fn().mockReturnValue({
+    headers: vi.fn().mockResolvedValue({
       get: vi.fn().mockReturnValue(null), // Default to no signature for the 400 test
     }),
   };
