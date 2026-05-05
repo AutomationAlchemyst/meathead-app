@@ -16,7 +16,7 @@ export function middleware(req: NextRequest) {
   const isServerAction = req.method === 'POST' && req.headers.has('next-action');
 
   if (isApiRoute || isServerAction) {
-    const ip = req.ip || req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '127.0.0.1';
     
     const currentUsage = rateLimitCache.get(ip) || 0;
     
