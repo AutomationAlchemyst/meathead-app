@@ -4,7 +4,7 @@
 import { db } from '@/lib/firebase'; 
 import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'; // Removed getDocs, query, orderBy, doc, getDoc
 import { FeedbackSubmissionServerSchema } from '@/types';
-import type { FeedbackSubmission, UserProfile } from '@/types'; // Removed FeedbackSubmissionPlain
+import type { FeedbackSubmission } from '@/types'; // Removed FeedbackSubmissionPlain
 import type { z } from 'zod'; 
 import { appendFeedbackToSheet } from '@/lib/googleSheetsService';
 

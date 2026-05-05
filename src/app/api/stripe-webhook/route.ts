@@ -154,6 +154,7 @@ export async function POST(req: Request) {
            console.log(`[API /stripe-webhook] User ${updatedSubFirebaseUserId} premium status updated to ${newPremiumStatus} based on subscription ${updatedSubscription.id} status ${updatedSubscription.status}.`);
          } catch (firestoreError: any) {
             console.error(`[API /stripe-webhook] Firestore update error for user ${updatedSubFirebaseUserId} on subscription update:`, firestoreError);
+            return NextResponse.json({ error: `Firestore update failed: ${firestoreError.message}` }, { status: 500 });
          }
       } else {
          console.warn(`[API /stripe-webhook] Could not determine firebaseUserId for subscription ${updatedSubscription.id}. Cannot update Firestore.`);
@@ -189,6 +190,7 @@ export async function POST(req: Request) {
            console.log(`[API /stripe-webhook] User ${deletedSubFirebaseUserId} premium status set to false due to subscription deletion.`);
          } catch (firestoreError: any) {
             console.error(`[API /stripe-webhook] Firestore update error for user ${deletedSubFirebaseUserId} on subscription deletion:`, firestoreError);
+            return NextResponse.json({ error: `Firestore update failed: ${firestoreError.message}` }, { status: 500 });
          }
       } else {
          console.warn(`[API /stripe-webhook] Could not determine firebaseUserId for deleted subscription ${deletedSubscription.id}. Cannot update Firestore.`);
@@ -221,6 +223,7 @@ export async function POST(req: Request) {
                 }
             } catch (lookupError: any) {
                 console.error(`[API /stripe-webhook] Error processing invoice.payment_succeeded for customer ${invoice.customer}:`, lookupError);
+                return NextResponse.json({ error: 'Failed to process payment_succeeded' }, { status: 500 });
             }
         } else if (invoiceUserFirebaseId) {
             // If firebaseUserId was available directly (e.g., from invoice metadata if Stripe supports it this way)
@@ -260,6 +263,7 @@ export async function POST(req: Request) {
                 }
             } catch (lookupError: any) {
                 console.error(`[API /stripe-webhook] Error processing invoice.payment_failed for customer ${failedInvoice.customer}:`, lookupError);
+                return NextResponse.json({ error: 'Failed to process payment_failed' }, { status: 500 });
             }
         } else if (failedInvoiceUserId) {
             const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
