@@ -88,15 +88,15 @@ export const TodaysMacrosCard = () => {
   if (!user) return <p>Please log in</p>;
 
   return (
-    <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
-      <CardHeader className="pb-2">
+    <Card className="h-full flex flex-col relative overflow-hidden group">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <CardHeader className="pb-2 relative z-10">
         <div className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-semibold">Today&apos;s Macros</CardTitle>
-          {/* FIX: Replaced Flame with Target for better clarity */}
-          <Target className="h-6 w-6 text-primary" />
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Today&apos;s Macros</CardTitle>
+          <Target className="h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]" />
         </div>
         {foodLoggedToday ? (
-          <CardDescription className="flex items-center text-xs text-green-600 pt-1">
+          <CardDescription className="flex items-center text-xs text-primary font-medium pt-1">
             <CheckCircle2 className="h-3 w-3 mr-1"/> Meals logged today!
           </CardDescription>
         ) : (
@@ -105,39 +105,38 @@ export const TodaysMacrosCard = () => {
           </CardDescription>
         )}
       </CardHeader>
-      <CardContent className="flex flex-col flex-grow pt-2">
+      <CardContent className="flex flex-col flex-grow pt-2 relative z-10">
         <div className="flex-grow space-y-4">
           <div>
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Flame className="h-4 w-4 mr-1 text-red-500"/>Calories</span>
-              <span className="text-sm text-muted-foreground">{todaysMacros?.calories?.toFixed(0)} / {targetCalories?.toFixed(0)} kcal</span>
+              <span className="text-sm font-medium text-foreground flex items-center"><Flame className="h-4 w-4 mr-1 text-primary"/>Calories</span>
+              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.calories?.toFixed(0)}</span> / {targetCalories?.toFixed(0)} kcal</span>
             </div>
-            <Progress value={getProgressValue(todaysMacros?.calories, targetCalories)} className="h-2 [&>div]:bg-red-500" />
+            <Progress value={getProgressValue(todaysMacros?.calories, targetCalories)} className="h-2 [&>div]:bg-primary" />
           </div>
           <div>
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Beef className="h-4 w-4 mr-1 text-green-500"/>Protein</span>
-              <span className="text-sm text-muted-foreground">{todaysMacros?.protein?.toFixed(1)} / {targetProtein?.toFixed(1)} g</span>
+              <span className="text-sm font-medium text-foreground flex items-center"><Beef className="h-4 w-4 mr-1 text-chart-2"/>Protein</span>
+              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.protein?.toFixed(1)}</span> / {targetProtein?.toFixed(1)} g</span>
             </div>
-            <Progress value={getProgressValue(todaysMacros?.protein, targetProtein)} className="h-2 [&>div]:bg-green-500" />
+            <Progress value={getProgressValue(todaysMacros?.protein, targetProtein)} className="h-2 [&>div]:bg-chart-2" />
           </div>
           <div>
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Wheat className="h-4 w-4 mr-1 text-yellow-500"/>Carbs</span>
-              <span className="text-sm text-muted-foreground">{todaysMacros?.carbs?.toFixed(1)} / {targetCarbs?.toFixed(1)} g</span>
+              <span className="text-sm font-medium text-foreground flex items-center"><Wheat className="h-4 w-4 mr-1 text-chart-3"/>Carbs</span>
+              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.carbs?.toFixed(1)}</span> / {targetCarbs?.toFixed(1)} g</span>
             </div>
-            <Progress value={getProgressValue(todaysMacros?.carbs, targetCarbs)} className="h-2 [&>div]:bg-yellow-500" />
+            <Progress value={getProgressValue(todaysMacros?.carbs, targetCarbs)} className="h-2 [&>div]:bg-chart-3" />
           </div>
           <div>
             <div className="flex justify-between items-baseline mb-1">
-              {/* FIX: Replaced Droplets with Egg for better clarity */}
-              <span className="text-sm font-medium text-foreground flex items-center"><Egg className="h-4 w-4 mr-1 text-blue-500"/>Fat</span>
-              <span className="text-sm text-muted-foreground">{todaysMacros?.fat?.toFixed(1)} / {targetFat?.toFixed(1)} g</span>
+              <span className="text-sm font-medium text-foreground flex items-center"><Egg className="h-4 w-4 mr-1 text-chart-4"/>Fat</span>
+              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.fat?.toFixed(1)}</span> / {targetFat?.toFixed(1)} g</span>
             </div>
-            <Progress value={getProgressValue(todaysMacros?.fat, targetFat)} className="h-2 [&>div]:bg-blue-500" />
+            <Progress value={getProgressValue(todaysMacros?.fat, targetFat)} className="h-2 [&>div]:bg-chart-4" />
           </div>
         </div>
-        <Button variant={foodLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full !mt-6">
+        <Button variant={foodLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full !mt-6 bg-card/40 border-primary/20 hover:bg-primary/20 hover:text-primary transition-all duration-300">
           <Link href="/food-logging">
             {foodLoggedToday ? ( <><Utensils className="mr-2 h-4 w-4"/>Log Another Meal</> ) : ( <><Utensils className="mr-2 h-4 w-4"/>Log Breakfast</> )}
           </Link>

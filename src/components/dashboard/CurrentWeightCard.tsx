@@ -57,18 +57,24 @@ export const CurrentWeightCard = () => {
   return (
     // The Dialog component wraps the card and controls the modal
     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="pb-2">
+        <Card className="h-full flex flex-col relative overflow-hidden group">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <CardHeader className="pb-2 relative z-10">
                 <div className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base font-semibold">Current Weight</CardTitle>
-                    <Scale className="h-6 w-6 text-primary" />
+                    <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Weight</CardTitle>
+                    <Scale className="h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]" />
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow">
+            <CardContent className="flex-grow relative z-10">
                 {currentWeight !== null && currentWeight !== undefined ? (
                 <>
-                    <div className="text-4xl font-bold">{currentWeight.toFixed(1)}<span className="text-2xl text-muted-foreground">kg</span></div>
-                    <div className="text-xs text-muted-foreground pt-1 flex items-center">
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-5xl font-headline font-bold text-foreground tracking-tighter">
+                            {currentWeight.toFixed(1)}
+                        </span>
+                        <span className="text-xl font-medium text-muted-foreground/70">kg</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground pt-3 font-medium flex items-center">
                         {getTrendIcon()}
                         <span className="ml-1">
                             {weightChange.toFixed(1)}kg from start ({startingWeight?.toFixed(1) ?? 'N/A'}kg)
@@ -89,10 +95,9 @@ export const CurrentWeightCard = () => {
                 </div>
                 )}
             </CardContent>
-            <CardFooter>
-                {/* This button will trigger the modal to open */}
+            <CardFooter className="relative z-10">
                 <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full bg-card/40 border-primary/20 hover:bg-primary/20 hover:text-primary transition-all duration-300">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Log Today's Weight
                     </Button>

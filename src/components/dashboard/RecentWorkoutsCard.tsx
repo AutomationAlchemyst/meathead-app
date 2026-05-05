@@ -129,15 +129,16 @@ export default function RecentWorkoutsCard() {
   }
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-      <CardHeader className="pb-2">
+    <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <CardHeader className="pb-2 relative z-10">
         <div className="flex items-center justify-between">
-            <CardTitle className="text-xl font-semibold text-primary flex items-center">
-            <ListChecks className="mr-2 h-6 w-6" /> Recent Workouts
+            <CardTitle className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground">
+            <ListChecks className="mr-2 h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]" /> Recent Workouts
             </CardTitle>
         </div>
         {workoutLoggedToday ? (
-            <CardDescription className="flex items-center text-xs text-green-600 pt-1">
+            <CardDescription className="flex items-center text-xs text-primary font-medium pt-1">
                 <CheckCircle2 className="h-3 w-3 mr-1"/> Workout logged today!
             </CardDescription>
         ) : (
@@ -146,20 +147,20 @@ export default function RecentWorkoutsCard() {
             </CardDescription>
         )}
       </CardHeader>
-      <CardContent className="pt-2">
+      <CardContent className="pt-2 flex-grow relative z-10">
         {recentWorkouts.length > 0 ? (
           <ul className="space-y-3">
             {recentWorkouts.map((workout) => (
-              <li key={workout.id} className="flex items-center space-x-3 p-3 rounded-lg bg-card hover:bg-muted/50 transition-colors">
-                <Dumbbell className="h-6 w-6 text-secondary flex-shrink-0" />
+              <li key={workout.id} className="flex items-center space-x-3 p-3 rounded-lg bg-background/60 hover:bg-background border border-border/50 hover:border-primary/50 transition-all duration-300">
+                <Dumbbell className="h-6 w-6 text-primary flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="font-medium text-sm text-foreground">
+                  <p className="font-headline tracking-tight text-sm text-foreground">
                     {workout.planName} - {workout.dayName || `Day ${workout.dayNumber}`}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground font-medium">
                     Focus: {workout.focus}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground/70">
                     Completed: {workout.completedAt instanceof Timestamp ? 
                       format(workout.completedAt.toDate(), 'MMM d, yyyy') + ` (${formatDistanceToNow(workout.completedAt.toDate(), { addSuffix: true })})` 
                       : 'Date unavailable'}
@@ -169,15 +170,17 @@ export default function RecentWorkoutsCard() {
             ))}
           </ul>
         ) : (
-          <EmptyState
-            icon={Dumbbell}
-            title="No workouts yet"
-            description="Create a personalized workout plan to get started."
-            action={{
-              label: "Create Workout Plan",
-              href: "/workout-planner"
-            }}
-          />
+          <div className="h-full flex items-center justify-center min-h-[150px]">
+            <EmptyState
+              icon={Dumbbell}
+              title="No workouts yet"
+              description="Create a personalized workout plan to get started."
+              action={{
+                label: "Create Workout Plan",
+                href: "/workout-planner"
+              }}
+            />
+          </div>
         )}
       </CardContent>
     </Card>

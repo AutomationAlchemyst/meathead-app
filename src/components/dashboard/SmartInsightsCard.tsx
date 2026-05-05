@@ -86,32 +86,33 @@ export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
   }, [userProfile, foodLogs, isPremium]);
 
   return (
-    <Card className="shadow-lg h-full flex flex-col">
-      <CardHeader>
+    <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <CardHeader className="relative z-10">
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle className="flex items-center text-primary">
-                    <Sparkles className="h-6 w-6 mr-2" />
+                <CardTitle className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground">
+                    <Sparkles className="h-5 w-5 mr-2 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]" />
                     Coach Ath's Smart Insights
                 </CardTitle>
-                <CardDescription>Your AI-powered daily brief.</CardDescription>
+                <CardDescription className="text-xs pt-1 text-muted-foreground/80">Your AI-powered daily brief.</CardDescription>
             </div>
-            {!isPremium && <span className="text-xs font-bold text-amber-500 bg-amber-100 px-2 py-1 rounded-full">Premium</span>}
+            {!isPremium && <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-full uppercase tracking-wider">Premium</span>}
         </div>
       </CardHeader>
-      <CardContent className="flex-grow flex items-center justify-center">
+      <CardContent className="flex-grow flex items-center justify-center relative z-10">
         {isPremium ? (
             <>
               {isLoading && (
-                <div className="space-y-2 w-full">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-3/4" />
+                <div className="space-y-3 w-full">
+                  <Skeleton className="h-3 w-full bg-muted/50" />
+                  <Skeleton className="h-3 w-5/6 bg-muted/50" />
+                  <Skeleton className="h-3 w-3/4 bg-muted/50" />
                 </div>
               )}
-              {error && <p className="text-sm text-destructive text-center">{error}</p>}
+              {error && <p className="text-sm text-destructive text-center font-medium">{error}</p>}
               {!isLoading && insight && (
-                <p className="text-sm text-center text-muted-foreground italic">"{insight}"</p>
+                <p className="text-sm text-center text-foreground font-medium leading-relaxed italic">"{insight}"</p>
               )}
             </>
         ) : (

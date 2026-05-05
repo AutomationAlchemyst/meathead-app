@@ -24,9 +24,11 @@ export const GreetingHeader = () => {
   const displayName = userProfile?.displayName || user?.email?.split('@')[0] || 'Cycle Breaker';
 
   return (
-    <div className="mb-8">
-      <h1 className="text-3xl font-bold text-foreground">{getGreeting()}, {displayName}!</h1>
-      <p className="text-muted-foreground">Ready to conquer your day? Let's track those macros.</p>
+    <div className="mb-4 md:mb-8">
+      <h1 className="text-3xl md:text-4xl font-headline font-bold text-foreground leading-tight tracking-tight">
+        {getGreeting()}, <span className="text-primary">{displayName}</span>!
+      </h1>
+      <p className="text-muted-foreground mt-2 text-sm md:text-base max-w-xl">Ready to conquer your day? Let's track those macros and maintain the streak.</p>
     </div>
   );
 };

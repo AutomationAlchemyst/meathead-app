@@ -42,13 +42,13 @@ export function Navbar() {
   if (!user) return null;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/40">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-          <Logo className="text-primary" />
-          <div>
-            <span className="font-headline">MeatHead</span>
-            <span className="block text-xs text-muted-foreground/80 -mt-1">by WorkFlowGuys</span>
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <Logo className="text-primary h-8 w-8" />
+          <div className="flex flex-col">
+            <span className="font-headline text-xl font-bold tracking-tight text-foreground leading-none">MeatHead</span>
+            <span className="text-[10px] uppercase tracking-wider text-primary font-medium mt-0.5">by WorkFlowGuys</span>
           </div>
         </Link>
 
@@ -80,11 +80,11 @@ export function Navbar() {
             <SheetContent side="right" className="w-full max-w-xs flex flex-col p-0">
               <SheetHeader className="p-6 pb-4 border-b">
                 <SheetTitle asChild>
-                  <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-                    <Logo className="text-primary" />
-                    <div>
-                      <span className="font-headline">MeatHead</span>
-                      <span className="block text-xs text-muted-foreground/80 -mt-1">by WorkFlowGuys</span>
+                  <Link href="/dashboard" className="flex items-center gap-3">
+                    <Logo className="text-primary h-8 w-8" />
+                    <div className="flex flex-col items-start">
+                      <span className="font-headline text-xl font-bold tracking-tight text-foreground leading-none">MeatHead</span>
+                      <span className="text-[10px] uppercase tracking-wider text-primary font-medium mt-0.5">by WorkFlowGuys</span>
                     </div>
                   </Link>
                 </SheetTitle>

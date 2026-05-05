@@ -87,9 +87,9 @@ export default function WeightLogForm({ onLogSuccess }: WeightLogFormProps) {
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
-      <div className="space-y-2">
-        <Label htmlFor="weight" className="flex items-center">
-          <Scale className="mr-2 h-4 w-4 text-muted-foreground" />
+      <div className="space-y-3">
+        <Label htmlFor="weight" className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground">
+          <Scale className="mr-2 h-4 w-4 text-primary" />
           Current Weight (kg)
         </Label>
         <Input 
@@ -99,12 +99,17 @@ export default function WeightLogForm({ onLogSuccess }: WeightLogFormProps) {
           {...form.register('weight')} 
           placeholder="e.g., 70.5" 
           disabled={isSubmitting || authLoading}
+          className="h-12 text-lg bg-background/60 border-border/50 focus-visible:ring-primary focus-visible:border-primary transition-all duration-300"
         />
         {form.formState.errors.weight && <p className="text-sm text-destructive">{form.formState.errors.weight.message}</p>}
       </div>
       
-      <Button type="submit" className="w-full" disabled={isSubmitting || authLoading}>
-        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+      <Button 
+        type="submit" 
+        className="w-full h-12 font-headline tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(13,242,89,0.3)] hover:shadow-[0_0_25px_rgba(13,242,89,0.5)] transition-all duration-300" 
+        disabled={isSubmitting || authLoading}
+      >
+        {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
         Log Weight
       </Button>
     </form>

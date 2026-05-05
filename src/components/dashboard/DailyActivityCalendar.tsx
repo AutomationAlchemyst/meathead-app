@@ -44,7 +44,7 @@ export const DailyActivityCalendar = () => {
     const foodLogsRef = collection(db, 'users', user.uid, 'foodLogs');
     const waterLogsRef = collection(db, 'users', user.uid, 'waterLogs');
     // NEW: Reference to the workouts collection
-    const workoutLogsRef = collection(db, 'users', user.uid, 'workouts');
+    const workoutLogsRef = collection(db, 'users', user.uid, 'workoutLogs');
 
     const foodQuery = query(foodLogsRef, where('loggedAt', '>=', Timestamp.fromDate(monthStart)), where('loggedAt', '<=', Timestamp.fromDate(monthEnd)));
     const waterQuery = query(waterLogsRef, where('loggedAt', '>=', Timestamp.fromDate(monthStart)), where('loggedAt', '<=', Timestamp.fromDate(monthEnd)));

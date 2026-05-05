@@ -74,15 +74,15 @@ export const TodaysWaterCard = () => {
     if (!user) return <p>Please log in</p>;
 
     return (
-        // FIX: Added `h-full` and `flex flex-col` to make the card stretch vertically.
-        <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="pb-2">
+        <Card className="h-full flex flex-col relative overflow-hidden group">
+          <div className="absolute inset-0 bg-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <CardHeader className="pb-2 relative z-10">
             <div className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base font-semibold">Today's Water Intake</CardTitle>
-                <Droplet className="h-6 w-6 text-primary" />
+                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Today's Water Intake</CardTitle>
+                <Droplet className="h-5 w-5 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
             </div>
             {waterLoggedToday ? (
-                <CardDescription className="flex items-center text-xs text-green-600 pt-1">
+                <CardDescription className="flex items-center text-xs text-cyan-400 font-medium pt-1">
                     <CheckCircle2 className="h-3 w-3 mr-1"/> Water logged today!
                 </CardDescription>
             ) : (
@@ -91,24 +91,25 @@ export const TodaysWaterCard = () => {
                 </CardDescription>
             )}
           </CardHeader>
-          {/* FIX: Make CardContent a flex container that grows to push the button to the bottom. */}
-          <CardContent className="flex flex-col flex-grow pt-2">
+          <CardContent className="flex flex-col flex-grow pt-2 relative z-10">
             <div className="flex-grow space-y-3">
                 <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-2xl font-bold text-primary">{consumedWater.toLocaleString()}ml</span>
+                    <span className="text-4xl font-headline font-bold text-foreground tracking-tighter">
+                        {consumedWater.toLocaleString()}<span className="text-xl font-medium text-muted-foreground/70 ml-1">ml</span>
+                    </span>
                     {targetWater && <span className="text-sm text-muted-foreground">/ {targetWater.toLocaleString()}ml target</span>}
                 </div>
                 {targetWater && targetWater > 0 ? (
-                    <Progress value={getProgressValue(consumedWater, targetWater)} className="h-3 [&>div]:bg-blue-500" />
+                    <Progress value={getProgressValue(consumedWater, targetWater)} className="h-2 [&>div]:bg-cyan-400" />
                     ) : (
-                    <div className="h-3 bg-muted rounded-full w-full flex items-center justify-center">
-                        <p className="text-xs text-muted-foreground">
+                    <div className="h-2 bg-muted rounded-full w-full flex items-center justify-center">
+                        <p className="text-xs text-muted-foreground mt-4">
                             <Link href="/profile" className="underline hover:text-primary">Set water target</Link> to see progress.
                         </p>
                     </div>
                 )}
             </div>
-            <Button variant={waterLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full mt-4">
+            <Button variant={waterLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full mt-4 bg-card/40 border-cyan-400/20 hover:bg-cyan-400/20 hover:text-cyan-300 transition-all duration-300">
                 <Link href="/water-tracking">
                   {waterLoggedToday ? ( <><PlusCircle className="mr-2 h-4 w-4"/>Log More Water</> ) : ( <><GlassWater className="mr-2 h-4 w-4"/>Log Your First Glass</> )}
                 </Link>

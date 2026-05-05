@@ -24,22 +24,29 @@ export const StreakCard = () => {
   }
 
   return (
-    // FIX: Added `h-full` and `flex flex-col` to make the card stretch vertically.
-    <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300 bg-gradient-to-br from-orange-50 via-card to-amber-50">
-      <CardHeader className="pb-2">
+    <Card className="h-full flex flex-col relative overflow-hidden group">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <CardHeader className="pb-2 relative z-10">
         <div className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-semibold text-amber-800">Current Logging Streak</CardTitle>
-          <Flame className={`h-6 w-6 ${currentStreak > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Current Streak</CardTitle>
+          <Flame className={`h-5 w-5 ${currentStreak > 0 ? 'text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]' : 'text-muted-foreground'}`} />
         </div>
       </CardHeader>
-      {/* FIX: `flex-grow` allows this content area to expand. */}
-      <CardContent className="flex-grow">
-        <div className="text-4xl font-bold text-orange-600">
-          {currentStreak}
-          <span className="text-2xl text-muted-foreground ml-1">day{currentStreak !== 1 ? 's' : ''}</span>
+      <CardContent className="flex-grow relative z-10">
+        <div className="flex items-baseline gap-1">
+          <span className="text-5xl font-headline font-bold text-foreground tracking-tighter">
+            {currentStreak}
+          </span>
+          <span className="text-xl font-medium text-muted-foreground/70">
+            day{currentStreak !== 1 ? 's' : ''}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground pt-1">
-          {currentStreak > 0 ? "You're on fire! Keep it up." : "Log an item today to start your streak!"}
+        <p className="text-xs text-muted-foreground pt-3 font-medium">
+          {currentStreak > 0 ? (
+            <span className="text-primary">You're on fire! Keep it up.</span>
+          ) : (
+            "Log an item today to start your streak!"
+          )}
         </p>
       </CardContent>
     </Card>

@@ -191,24 +191,25 @@ export const FoodLogForm = () => {
   const renderFreemiumHeader = () => { /* ... (no changes here) ... */ return null; };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl p-6 shadow-lg shadow-black/20 relative overflow-hidden group">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       {/* Freemium UI and Form JSX */}
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-          <div className="md:col-span-2 space-y-2">
-            <Label htmlFor="naturalLanguageQuery" className="flex items-center">
-              <MessageSquareText className="mr-2 h-4 w-4 text-muted-foreground" />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+          <div className="md:col-span-2 space-y-3">
+            <Label htmlFor="naturalLanguageQuery" className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground">
+              <MessageSquareText className="mr-2 h-4 w-4 text-primary" />
               Describe your meal
             </Label>
             {/* --- UI UPDATE --- Added Mic button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3">
               <Textarea
                 id="naturalLanguageQuery"
                 {...form.register('naturalLanguageQuery')}
                 placeholder="e.g., A bowl of oatmeal with blueberries and a black coffee"
                 rows={3}
                 disabled={isSubmitting || authLoading || !canUseAILogging || isListening}
-                className="min-h-[80px] text-base"
+                className="min-h-[100px] text-base resize-none bg-background/60 border-border/50 focus-visible:ring-primary focus-visible:border-primary transition-all duration-300"
               />
               <Button
                 type="button"
@@ -216,17 +217,20 @@ export const FoodLogForm = () => {
                 size="icon"
                 onClick={handleListen}
                 disabled={isSubmitting || authLoading || !canUseAILogging}
-                className="h-12 w-12 sm:h-full sm:aspect-square sm:min-h-[80px] self-center"
+                className={cn(
+                  "h-12 w-12 sm:h-full sm:aspect-square sm:min-h-[100px] self-center transition-all duration-300",
+                  isListening ? "bg-red-500/20 text-red-500 border-red-500/50 hover:bg-red-500/30" : "bg-card/40 border-border/50 hover:bg-primary/20 hover:text-primary hover:border-primary/50"
+                )}
               >
-                <Mic className={`h-5 w-5 ${isListening ? 'animate-pulse' : ''}`} />
+                <Mic className={`h-6 w-6 ${isListening ? 'animate-pulse' : ''}`} />
                 <span className="sr-only">Log with voice</span>
               </Button>
             </div>
             {form.formState.errors.naturalLanguageQuery && <p className="text-sm text-destructive">{form.formState.errors.naturalLanguageQuery.message}</p>}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="mealDate" className="flex items-center">
-              <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+          <div className="space-y-3">
+            <Label htmlFor="mealDate" className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground">
+              <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
               Log for Date
             </Label>
             <Popover>
@@ -234,26 +238,31 @@ export const FoodLogForm = () => {
                 <Button
                   id="mealDate"
                   variant={"outline"}
-                  className={cn("w-full justify-start text-left font-normal h-10", !selectedDate && "text-muted-foreground")}
+                  className={cn("w-full justify-start text-left font-normal h-12 bg-background/60 border-border/50 hover:bg-background hover:text-foreground transition-all duration-300", !selectedDate && "text-muted-foreground")}
                   disabled={isSubmitting || authLoading}
                 >
                   {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0 bg-card/90 backdrop-blur-xl border-border/50">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={(date) => date > new Date() || date < new Date("2000-01-01")}
                   initialFocus
+                  className="bg-transparent"
                 />
               </PopoverContent>
             </Popover>
           </div>
         </div>
-        <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || authLoading || !canUseAILogging}>
-          {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+        <Button 
+          type="submit" 
+          className="w-full sm:w-auto h-12 px-8 font-headline tracking-wide bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(13,242,89,0.3)] hover:shadow-[0_0_25px_rgba(13,242,89,0.5)] transition-all duration-300" 
+          disabled={isSubmitting || authLoading || !canUseAILogging}
+        >
+          {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
           {getButtonText()}
         </Button>
       </form>

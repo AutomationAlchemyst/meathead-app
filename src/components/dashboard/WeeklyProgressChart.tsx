@@ -94,12 +94,13 @@ export const WeeklyProgressChart = () => {
 
     if (!hasWeightData && !hasCarbData) {
         return (
-            <Card className="shadow-lg h-full">
-                <CardHeader>
-                    <CardTitle className="flex items-center"><TrendingUp className="mr-2 h-6 w-6 text-primary"/>Weekly Progress</CardTitle>
-                    <CardDescription>Your weight and carb intake over the last 7 days.</CardDescription>
+            <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
+                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <CardHeader className="relative z-10">
+                    <CardTitle className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground"><TrendingUp className="mr-2 h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]"/>Weekly Progress</CardTitle>
+                    <CardDescription className="text-xs">Your weight and carb intake over the last 7 days.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-grow flex items-center justify-center relative z-10">
                     <EmptyState
                         icon={Scale}
                         title="No data yet"
@@ -115,22 +116,26 @@ export const WeeklyProgressChart = () => {
     }
 
     return (
-        <Card className="shadow-lg h-full">
-            <CardHeader>
-                <CardTitle className="flex items-center"><TrendingUp className="mr-2 h-6 w-6 text-primary"/>Weekly Progress</CardTitle>
-                <CardDescription>Your weight and carb intake over the last 7 days.</CardDescription>
+        <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+            <CardHeader className="relative z-10">
+                <CardTitle className="flex items-center text-sm font-headline tracking-wide uppercase text-muted-foreground"><TrendingUp className="mr-2 h-5 w-5 text-primary drop-shadow-[0_0_8px_rgba(13,242,89,0.5)]"/>Weekly Progress</CardTitle>
+                <CardDescription className="text-xs">Your weight and carb intake over the last 7 days.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
+            <CardContent className="flex-grow relative z-10">
+                <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis yAxisId="left" stroke="#8884d8" />
-                        <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                        <Tooltip />
-                        <Legend />
-                        <Bar yAxisId="left" dataKey="weight" fill="#8884d8" name="Weight (kg)" />
-                        <Bar yAxisId="right" dataKey="carbs" fill="#82ca9d" name="Carbs (g)" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="left" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                            itemStyle={{ color: 'hsl(var(--foreground))' }}
+                        />
+                        <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                        <Bar yAxisId="left" dataKey="weight" fill="#22d3ee" name="Weight (kg)" radius={[4, 4, 0, 0]} />
+                        <Bar yAxisId="right" dataKey="carbs" fill="#0df259" name="Carbs (g)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                 </ResponsiveContainer>
             </CardContent>
