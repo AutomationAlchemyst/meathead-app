@@ -35,6 +35,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Match all request paths except static files, images, favicon, etc.
+  // We match all request paths (excluding static files) because Server Actions
+  // can be executed on any page path via a POST request.
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

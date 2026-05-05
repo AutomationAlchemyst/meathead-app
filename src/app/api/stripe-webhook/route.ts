@@ -207,35 +207,34 @@ export async function POST(req: Request) {
         // Similar to subscription.updated, you might need to find the user by customerId or subscriptionId
         // and ensure their `premiumSubscriptionStatus` is 'active' and `subscriptionUpdatedAt` is current.
         let invoiceUserFirebaseId = invoice.metadata?.firebaseUserId; // if passed during checkout
+        
         if (!invoiceUserFirebaseId && typeof invoice.customer === 'string') {
             try {
                 const usersRef = adminDb.collection('users');
                 const querySnapshot = await usersRef.where('stripeCustomerId', '==', invoice.customer).limit(1).get();
                 if (!querySnapshot.empty) {
                     invoiceUserFirebaseId = querySnapshot.docs[0].id;
-                    const userDocRef = adminDb.collection('users').doc(invoiceUserFirebaseId);
-                    await userDocRef.update({
-                        isPremium: true,
-                        premiumSubscriptionStatus: 'active', // Ensure active on renewal
-                        subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    });
-                    console.log(`[API /stripe-webhook] User ${invoiceUserFirebaseId} subscription confirmed active on invoice payment.`);
                 }
             } catch (lookupError: any) {
-                console.error(`[API /stripe-webhook] Error processing invoice.payment_succeeded for customer ${invoice.customer}:`, lookupError);
-                return NextResponse.json({ error: 'Failed to process payment_succeeded' }, { status: 500 });
+                console.error(`[API /stripe-webhook] Error looking up user for invoice.payment_succeeded for customer ${invoice.customer}:`, lookupError);
+                return NextResponse.json({ error: 'Failed to query user by customer ID' }, { status: 500 });
             }
-        } else if (invoiceUserFirebaseId) {
-            // If firebaseUserId was available directly (e.g., from invoice metadata if Stripe supports it this way)
+        } 
+        
+        if (invoiceUserFirebaseId) {
             const userDocRef = adminDb.collection('users').doc(invoiceUserFirebaseId);
-             await userDocRef.update({
-                isPremium: true,
-                premiumSubscriptionStatus: 'active',
-                subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            console.log(`[API /stripe-webhook] User ${invoiceUserFirebaseId} subscription confirmed active via invoice metadata.`);
+            try {
+                await userDocRef.update({
+                    isPremium: true,
+                    premiumSubscriptionStatus: 'active', // Ensure active on renewal
+                    subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                console.log(`[API /stripe-webhook] User ${invoiceUserFirebaseId} subscription confirmed active on invoice payment.`);
+            } catch (updateError: any) {
+                console.error(`[API /stripe-webhook] Firestore update error for user ${invoiceUserFirebaseId} on invoice.payment_succeeded:`, updateError);
+                return NextResponse.json({ error: `Firestore update failed: ${updateError.message}` }, { status: 500 });
+            }
         }
-
       }
       break;
 
@@ -245,34 +244,35 @@ export async function POST(req: Request) {
       // Notify user of failed payment and potentially downgrade their status
       if (failedInvoice.subscription && failedInvoice.customer) {
         let failedInvoiceUserId = failedInvoice.metadata?.firebaseUserId;
+        
         if (!failedInvoiceUserId && typeof failedInvoice.customer === 'string') {
             try {
                 const usersRef = adminDb.collection('users');
                 const querySnapshot = await usersRef.where('stripeCustomerId', '==', failedInvoice.customer).limit(1).get();
                 if (!querySnapshot.empty) {
                     failedInvoiceUserId = querySnapshot.docs[0].id;
-                    const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
-                    // Optionally downgrade user or mark payment as failed
-                    // For now, just log and update status to past_due
-                    await userDocRef.update({
-                        isPremium: false,
-                        premiumSubscriptionStatus: 'past_due',
-                        subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    });
-                    console.log(`[API /stripe-webhook] User ${failedInvoiceUserId} payment failed, status set to past_due.`);
                 }
             } catch (lookupError: any) {
-                console.error(`[API /stripe-webhook] Error processing invoice.payment_failed for customer ${failedInvoice.customer}:`, lookupError);
-                return NextResponse.json({ error: 'Failed to process payment_failed' }, { status: 500 });
+                console.error(`[API /stripe-webhook] Error looking up user for invoice.payment_failed for customer ${failedInvoice.customer}:`, lookupError);
+                return NextResponse.json({ error: 'Failed to query user by customer ID' }, { status: 500 });
             }
-        } else if (failedInvoiceUserId) {
+        } 
+        
+        if (failedInvoiceUserId) {
             const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
-            await userDocRef.update({
-                isPremium: false,
-                premiumSubscriptionStatus: 'past_due',
-                subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            console.log(`[API /stripe-webhook] User ${failedInvoiceUserId} payment failed, status set to past_due.`);
+            try {
+                // Optionally downgrade user or mark payment as failed
+                // For now, just log and update status to past_due
+                await userDocRef.update({
+                    isPremium: false,
+                    premiumSubscriptionStatus: 'past_due',
+                    subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+                console.log(`[API /stripe-webhook] User ${failedInvoiceUserId} payment failed, status set to past_due.`);
+            } catch (updateError: any) {
+                console.error(`[API /stripe-webhook] Firestore update error for user ${failedInvoiceUserId} on invoice.payment_failed:`, updateError);
+                return NextResponse.json({ error: `Firestore update failed: ${updateError.message}` }, { status: 500 });
+            }
         }
       }
       break;
