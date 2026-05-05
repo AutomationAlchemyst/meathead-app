@@ -395,6 +395,8 @@ export default function RecipeGeneratorPage() {
   const storedMonth = userProfile?.freeGenerationsMonth;
   const monthlyFreeGenerationsUsed = storedMonth === currentMonth ? (userProfile?.freeGenerationsUsedThisMonth ?? 0) : 0;
   const baseFreeLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
+  
+  // Use optimistic value if set, otherwise fall back to Firestore value
   const freeGenerationsLeft = optimisticFreeLeft !== null ? optimisticFreeLeft : baseFreeLeft;
   const canUseFeature = isPremium || trialDaysRemaining > 0 || freeGenerationsLeft > 0;
 
@@ -439,6 +441,8 @@ export default function RecipeGeneratorPage() {
 
   // Reset optimistic counter when Firestore profile updates (confirms server value)
   useEffect(() => {
+    // onSnapshot delivers a new userProfile object each time — use this to
+    // detect when Firestore has confirmed the server-side generation count
     setOptimisticFreeLeft(null);
   }, [userProfile]);
 
@@ -455,10 +459,19 @@ export default function RecipeGeneratorPage() {
       return false;
     }
 
+    // Optimistic decrement: immediately update local UI to prevent double-spend
+    setOptimisticFreeLeft(prev => {
+      const current = prev !== null ? prev : baseFreeLeft;
+      const next = current - 1;
+      return next;
+    });
+
     try {
       await incrementFreeGenerationsUsedForUser(user.uid);
       return true;
     } catch (error: any) {
+      // Revert optimistic decrement on failure
+      setOptimisticFreeLeft(null);
       toast({
         title: "Limit Reached",
         description: error.message || "Could not update your free generation allowance. Please try again.",
