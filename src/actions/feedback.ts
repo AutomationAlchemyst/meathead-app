@@ -55,24 +55,22 @@ export async function submitFeedback(
         submittedAt: Timestamp.now() as any
     };
 
-    appendFeedbackToSheet(feedbackForSheet)
-      .then(sheetResult => {
-        if (!sheetResult.success) {
-          console.warn("Failed to append feedback to Google Sheet:", sheetResult.error);
-        } else {
-          console.log("Feedback also appended to Google Sheet.");
-        }
-      })
-      .catch(sheetError => {
-        console.error("Unexpected error during Google Sheet append operation:", sheetError);
-      });
-
-    return { success: true };
+    try {
+      const sheetResult = await appendFeedbackToSheet(feedbackForSheet);
+      if (!sheetResult.success) {
+        console.warn("Failed to append feedback to Google Sheet:", sheetResult.error);
+        return { error: "Feedback saved but failed to update Google Sheet. Please try again." };
+      }
+      console.log("Feedback also appended to Google Sheet.");
+      return { success: true };
+    } catch (sheetError) {
+      console.error("Unexpected error during Google Sheet append operation:", sheetError);
+      return { error: "Failed to update Google Sheet." };
+    }
   } catch (error: any) {
     console.error("Error submitting feedback to Firestore:", error);
     return { error: error.message || "Failed to submit feedback." };
   }
 }
 
-// getFeedbackSubmissions function has been removed as it's no longer used by the feedback page.
-// Admins will now directly access the Google Sheet.
+// Admins will now access the Google Sheet via a secure API route.

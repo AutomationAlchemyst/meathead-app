@@ -136,6 +136,7 @@ export async function POST(req: Request) {
             }
         } catch (lookupError: any) {
             console.error(`[API /stripe-webhook] Error looking up user by stripeCustomerId ${updatedSubscription.customer}:`, lookupError);
+            return NextResponse.json({ error: 'Failed to query user by customer ID' }, { status: 500 });
         }
       }
 
@@ -173,6 +174,7 @@ export async function POST(req: Request) {
             }
         } catch (lookupError: any) {
             console.error(`[API /stripe-webhook] Error looking up user by stripeCustomerId for deleted subscription:`, lookupError);
+            return NextResponse.json({ error: 'Failed to query user by customer ID' }, { status: 500 });
         }
       }
 
@@ -211,6 +213,7 @@ export async function POST(req: Request) {
                     invoiceUserFirebaseId = querySnapshot.docs[0].id;
                     const userDocRef = adminDb.collection('users').doc(invoiceUserFirebaseId);
                     await userDocRef.update({
+                        isPremium: true,
                         premiumSubscriptionStatus: 'active', // Ensure active on renewal
                         subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
                     });
@@ -223,6 +226,7 @@ export async function POST(req: Request) {
             // If firebaseUserId was available directly (e.g., from invoice metadata if Stripe supports it this way)
             const userDocRef = adminDb.collection('users').doc(invoiceUserFirebaseId);
              await userDocRef.update({
+                isPremium: true,
                 premiumSubscriptionStatus: 'active',
                 subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
@@ -248,6 +252,7 @@ export async function POST(req: Request) {
                     // Optionally downgrade user or mark payment as failed
                     // For now, just log and update status to past_due
                     await userDocRef.update({
+                        isPremium: false,
                         premiumSubscriptionStatus: 'past_due',
                         subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
                     });
@@ -259,6 +264,7 @@ export async function POST(req: Request) {
         } else if (failedInvoiceUserId) {
             const userDocRef = adminDb.collection('users').doc(failedInvoiceUserId);
             await userDocRef.update({
+                isPremium: false,
                 premiumSubscriptionStatus: 'past_due',
                 subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });

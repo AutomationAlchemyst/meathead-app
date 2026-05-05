@@ -10,6 +10,9 @@ if (!stripeSecretKey) {
   console.error("[API /create-checkout-session] CRITICAL ERROR: STRIPE_SECRET_KEY is not set.");
   // We won't throw here to allow the server to start, but checkout will fail.
 }
+if (!process.env.NEXT_PUBLIC_APP_BASE_URL) {
+  console.error("[API /create-checkout-session] CRITICAL ERROR: NEXT_PUBLIC_APP_BASE_URL is not set.");
+}
 // Initialize Stripe outside the handler, only if the key exists.
 // If the key is missing, stripe will be undefined, and we'll return an error in POST.
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {

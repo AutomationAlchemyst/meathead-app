@@ -110,22 +110,22 @@ export default function FeedbackPage() {
     setIsSubmitting(false);
   };
 
-  const handleOpenSheet = () => {
-    if (!isAdmin) {
+  const handleOpenSheet = async () => {
+    if (!isAdmin || !user) {
       toast({ title: 'Unauthorized', description: 'This action is for administrators only.', variant: 'destructive' });
       return;
     }
 
-    const sheetId = process.env.NEXT_PUBLIC_GOOGLE_SHEET_ID;
-    if (!sheetId) {
-      toast({ title: 'Configuration Error', description: 'Google Sheet ID is not configured. Admins should check NEXT_PUBLIC_GOOGLE_SHEET_ID.', variant: 'destructive' });
-      return;
-    }
     setIsOpeningSheet(true);
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}`;
-    window.open(sheetUrl, '_blank');
-    toast({ title: 'Opening Sheet', description: 'Attempting to open the feedback Google Sheet.' });
-    setTimeout(() => setIsOpeningSheet(false), 1000);
+    try {
+      const idToken = await user.getIdToken();
+      window.open(`/api/admin/feedback-sheet?token=${idToken}`, '_blank');
+      toast({ title: 'Opening Sheet', description: 'Attempting to open the feedback Google Sheet.' });
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to authenticate.', variant: 'destructive' });
+    } finally {
+      setTimeout(() => setIsOpeningSheet(false), 1000);
+    }
   };
   
   if (authLoading) {
