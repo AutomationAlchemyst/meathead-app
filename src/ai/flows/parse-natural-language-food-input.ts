@@ -38,7 +38,6 @@ const prompt = ai.definePrompt({
   name: 'parseNaturalLanguageFoodPrompt',
   input: {schema: ParseNaturalLanguageFoodInputSchema},
   output: {schema: ParseNaturalLanguageFoodOutputSchema},
-  config: { googleSearchRetrieval: true },
   prompt: `You are an expert at understanding food descriptions, especially keto and Bulletproof Coffee drinks.
 The user will provide a natural language description of what they ate.
 Your task is to extract ALL individual food items and their quantities, including any ADDITIVES or MIX-INS.

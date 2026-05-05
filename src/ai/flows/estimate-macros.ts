@@ -38,7 +38,6 @@ const prompt = ai.definePrompt({
   name: 'estimateMacrosPrompt',
   input: {schema: EstimateMacrosInputSchema},
   output: {schema: EstimateMacrosOutputSchema},
-  config: { googleSearchRetrieval: true },
   prompt: `You are a nutrition expert. Estimate the macros (carbs, protein, fat) and total calories for the following food item and quantity:
 
 Food Item: {{{foodItem}}}
