@@ -25,9 +25,10 @@ const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : 
 interface UpgradePromptProps {
   featureName?: string;
   message?: string;
+  flat?: boolean;
 }
 
-export default function UpgradePrompt({ featureName = "This advanced feature", message }: UpgradePromptProps) {
+export default function UpgradePrompt({ featureName = "This advanced feature", message, flat = false }: UpgradePromptProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -138,6 +139,70 @@ export default function UpgradePrompt({ featureName = "This advanced feature", m
         setIsRedirecting(false);
     }
   };
+
+  if (flat) {
+    return (
+      <div className="w-full text-center py-2 px-1 relative z-10 flex flex-col items-center justify-center">
+        <Gem className="mx-auto h-8 w-8 text-primary mb-2 drop-shadow-[0_0_8px_rgba(13,242,89,0.3)] animate-pulse" />
+        <h3 className="text-lg font-headline text-primary font-bold">
+          Unlock {featureName}!
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-md mx-auto leading-normal">
+          {message || `Supercharge your journey with our premium tools. This powerful feature is available for MeatHead Premium members.`}
+        </p>
+
+        {(!monthlyPriceId && !yearlyPriceId) ? (
+            <p className="text-destructive text-[11px] my-2">Subscription plans are not configured. Please contact support.</p>
+        ) : (
+            <RadioGroup 
+                defaultValue={selectedPlan} 
+                onValueChange={(value: 'monthly' | 'yearly') => setSelectedPlan(value)} 
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 w-full max-w-lg mx-auto"
+                disabled={isRedirecting}
+            >
+            {monthlyPriceId && (
+                <Label htmlFor="plan-monthly" className={cn("flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:border-primary transition-colors", selectedPlan === 'monthly' ? "border-primary ring-1 ring-primary bg-primary/5" : "border-border")}>
+                    <RadioGroupItem value="monthly" id="plan-monthly" className="scale-90" />
+                    <div className="text-left leading-tight">
+                        <div className="text-xs font-semibold flex items-center">
+                            <CalendarDays className="h-3.5 w-3.5 mr-1 text-primary/80" /> Monthly
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">SGD 12.99/mo. Cancel anytime.</p>
+                    </div>
+                </Label>
+            )}
+            {yearlyPriceId && (
+                <Label htmlFor="plan-yearly" className={cn("flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:border-primary transition-colors", selectedPlan === 'yearly' ? "border-primary ring-1 ring-primary bg-primary/5" : "border-border")}>
+                    <RadioGroupItem value="yearly" id="plan-yearly" className="scale-90" />
+                    <div className="text-left leading-tight">
+                        <div className="text-xs font-semibold flex items-center">
+                           <CalendarClock className="h-3.5 w-3.5 mr-1 text-primary/80" /> Annual 
+                           <span className="ml-1 text-[8px] px-1 py-0.2 bg-accent/20 text-accent rounded-full font-bold uppercase">Save 25%</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">SGD 99.99/yr. Billed annually.</p>
+                    </div>
+                </Label>
+            )}
+            </RadioGroup>
+        )}
+
+        <Button 
+          onClick={handleUpgradeClick} 
+          size="default" 
+          className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground shadow-md transition-all duration-300 ease-in-out hover:scale-105 px-6 font-headline tracking-wide"
+          disabled={isRedirecting || !stripePublishableKey || (!monthlyPriceId && !yearlyPriceId) || (selectedPlan === 'monthly' && !monthlyPriceId) || (selectedPlan === 'yearly' && !yearlyPriceId) }
+        >
+          {isRedirecting ? (
+            <Zap className="mr-2 h-4 w-4 animate-ping" />
+          ) : (
+            <Zap className="mr-2 h-4 w-4" />
+          )}
+          {isRedirecting ? "Processing..." : `Upgrade to Premium`}
+        </Button>
+        {!stripePublishableKey && <p className="text-[10px] text-destructive mt-1.5">Payments are currently unavailable.</p>}
+      </div>
+    );
+  }
 
   return (
     <Card className="mt-8 shadow-xl border-2 border-primary bg-gradient-to-br from-primary/5 via-card to-secondary/5">

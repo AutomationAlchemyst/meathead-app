@@ -241,6 +241,7 @@ export const FoodLogForm = () => {
           <UpgradePrompt
             featureName="AI Food Logging"
             message="You've used all your free AI food logs this month. Upgrade to Premium for unlimited logging, or start a free 3-day trial!"
+            flat={true}
           />
           {trialAvailable && (
             <Button onClick={startTrial} className="w-full h-12 bg-primary text-primary-foreground font-headline tracking-wide" disabled={isSubmitting}>

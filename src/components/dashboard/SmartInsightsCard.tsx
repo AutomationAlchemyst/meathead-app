@@ -125,6 +125,7 @@ export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
             <UpgradePrompt 
                 featureName="Smart Insights"
                 message="Unlock personalized AI insights from Coach Ath to analyze your trends, get motivation, and receive actionable advice. Upgrade to Premium to get your daily brief."
+                flat={true}
             />
         )}
       </CardContent>
