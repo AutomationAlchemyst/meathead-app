@@ -129,7 +129,7 @@ export default function RecentWorkoutsCard() {
   }
 
   return (
-    <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
+    <Card className="h-auto lg:h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
       <CardHeader className="pb-2 relative z-10">
         <div className="flex items-center justify-between">
