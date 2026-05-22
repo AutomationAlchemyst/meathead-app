@@ -117,7 +117,7 @@ export interface UserEntitlement {
  * Canonical entitlement evaluation.
  * Precedence rule: Premium Active > Trial Active > Free Quota
  */
-export function evaluateEntitlement(userData: any): UserEntitlement {
+export async function evaluateEntitlement(userData: any): Promise<UserEntitlement> {
   const now = new Date();
   
   // 1. Premium check (status is 'active' or isPremium flag is true)
@@ -185,7 +185,7 @@ export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'wor
     }
 
     const userData = userDoc.data() || {};
-    const entitlement = evaluateEntitlement(userData);
+    const entitlement = await evaluateEntitlement(userData);
 
     let limit = 3; // recipes and foodLogs
     let field = 'recipesUsed';

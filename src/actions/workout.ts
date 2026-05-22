@@ -42,7 +42,7 @@ export async function adaptWorkoutScheduleAction(idToken: string, input: AdaptWo
     // Adaptation is a premium/trial-only feature. Verify entitlement.
     const userDoc = await adminDb.collection('users').doc(uid).get();
     const userData = userDoc.data() || {};
-    const entitlement = evaluateEntitlement(userData);
+    const entitlement = await evaluateEntitlement(userData);
 
     if (entitlement.type === 'free') {
       throw new Error('Workout plan adaptation is a premium-only feature. Please upgrade to Premium or start a trial.');
