@@ -1,17 +1,14 @@
 import Stripe from 'stripe';
-import { adminDb, admin } from '@/lib/firebaseAdmin';
+import { admin } from '@/lib/firebaseAdmin';
 
-export async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
-  const firebaseUserId = session.metadata?.firebaseUserId || session.client_reference_id;
+export function handleCheckoutSessionCompleted(
+  transaction: admin.firestore.Transaction,
+  userDocRef: admin.firestore.DocumentReference,
+  session: Stripe.Checkout.Session
+) {
+  console.log(`[Webhook Handler] Processing checkout.session.completed for user ${userDocRef.id}`);
 
-  if (!firebaseUserId) {
-    throw new Error('firebaseUserId not found in session metadata or client_reference_id.');
-  }
-
-  console.log(`[Webhook Handler] Processing checkout.session.completed for user ${firebaseUserId}`);
-
-  const userDocRef = adminDb.collection('users').doc(firebaseUserId);
-  await userDocRef.update({
+  transaction.update(userDocRef, {
     isPremium: true,
     stripeCustomerId: session.customer,
     stripeSubscriptionId: session.subscription,
@@ -19,5 +16,5 @@ export async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Se
     subscriptionUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`[Webhook Handler] User ${firebaseUserId} successfully upgraded to premium.`);
+  console.log(`[Webhook Handler] User ${userDocRef.id} successfully updated to premium inside transaction.`);
 }

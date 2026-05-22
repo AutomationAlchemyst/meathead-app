@@ -108,15 +108,71 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 }
 
-export async function verifyIdToken(idToken: string): Promise<string> {
-  if (!idToken) {
-    throw new Error('ID Token is required for server actions.');
-  }
-  const decodedToken = await adminAuth.verifyIdToken(idToken);
-  return decodedToken.uid;
+export interface UserEntitlement {
+  type: 'premium' | 'trial' | 'free';
+  isActive: boolean;
 }
 
-export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'workout' | 'foodLog'): Promise<{ success: boolean; isPremium: boolean }> {
+/**
+ * Canonical entitlement evaluation.
+ * Precedence rule: Premium Active > Trial Active > Free Quota
+ */
+export function evaluateEntitlement(userData: any): UserEntitlement {
+  const now = new Date();
+  
+  // 1. Premium check (status is 'active' or isPremium flag is true)
+  const isPremium = userData.isPremium === true || userData.premiumSubscriptionStatus === 'active';
+  if (isPremium) {
+    return { type: 'premium', isActive: true };
+  }
+  
+  // 2. Trial check (trial ends in the future)
+  const trialEndsAt = userData.trialEndsAt;
+  const trialEndsDate = trialEndsAt && (typeof trialEndsAt.toDate === 'function' ? trialEndsAt.toDate() : new Date(trialEndsAt));
+  const hasActiveTrial = trialEndsDate && trialEndsDate > now;
+  if (hasActiveTrial) {
+    return { type: 'trial', isActive: true };
+  }
+  
+  // 3. Free Tier
+  return { type: 'free', isActive: true };
+}
+
+export async function verifyIdToken(idToken: string): Promise<string> {
+  if (!idToken) {
+    throw new Error('Authentication is required. Please log in.');
+  }
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    
+    // Strict age check: enforce that the token is not older than 1 hour (Firebase tokens are valid for 1 hour)
+    const now = Math.floor(Date.now() / 1000);
+    if (decodedToken.exp < now) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    
+    return decodedToken.uid;
+  } catch (error: any) {
+    console.error('[verifyIdToken] Token verification failed:', error.code || error.message);
+    if (error.code === 'auth/id-token-expired') {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    if (error.code === 'auth/id-token-revoked') {
+      throw new Error('Your session was revoked. Please sign in again.');
+    }
+    if (error.code === 'auth/argument-error') {
+      throw new Error('Invalid authentication token.');
+    }
+    throw new Error('Authentication failed. Please log in.');
+  }
+}
+
+export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'workout' | 'foodLog'): Promise<{
+  success: boolean;
+  isPremium: boolean;
+  limit: number;
+  currentUsed: number;
+}> {
   const userRef = adminDb.collection('users').doc(uid);
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -129,17 +185,7 @@ export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'wor
     }
 
     const userData = userDoc.data() || {};
-    const isPremium = userData.isPremium === true;
-    const trialEndsAt = userData.trialEndsAt;
-    const hasActiveTrial = trialEndsAt && trialEndsAt.toDate() > now;
-
-    if (isPremium || hasActiveTrial) {
-      return { success: true, isPremium: true };
-    }
-
-    // Check quota
-    const quotaDoc = await transaction.get(quotaRef);
-    const quotaData = quotaDoc.data() || {};
+    const entitlement = evaluateEntitlement(userData);
 
     let limit = 3; // recipes and foodLogs
     let field = 'recipesUsed';
@@ -152,18 +198,30 @@ export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'wor
       field = 'foodLogsUsed';
     }
 
+    // Check quota doc inside the transaction
+    const quotaDoc = await transaction.get(quotaRef);
+    const quotaData = quotaDoc.data() || {};
     const currentUsed = quotaData[field] || 0;
+
+    if (entitlement.type === 'premium' || entitlement.type === 'trial') {
+      // Premium and trial users have unlimited quota, return limit as Infinity but track count
+      return { success: true, isPremium: true, limit: Infinity, currentUsed };
+    }
+
+    // Check quota limit for free tier
     if (currentUsed >= limit) {
       throw new Error(`You have reached your free monthly limit of ${limit} ${feature}s. Please upgrade to Premium or start a trial!`);
     }
 
-    // Increment count
+    const newUsed = currentUsed + 1;
+    // Increment count transactionally
     transaction.set(quotaRef, {
-      [field]: currentUsed + 1,
+      monthKey: currentMonth,
+      [field]: newUsed,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    return { success: true, isPremium: false };
+    return { success: true, isPremium: false, limit, currentUsed: newUsed };
   });
 }
 
@@ -209,12 +267,11 @@ export async function incrementFreeGenerationsUsed(userId: string): Promise<{ su
   if (!userId) return { success: false, generationsLeft: 0 };
 
   try {
-    await verifyPremiumOrQuota(userId, 'recipe');
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const quotaDoc = await adminDb.collection('users').doc(userId).collection('quotas').doc(currentMonth).get();
-    const recipesUsed = quotaDoc.exists ? (quotaDoc.data()?.recipesUsed || 0) : 0;
-    return { success: true, generationsLeft: Math.max(0, 3 - recipesUsed) };
+    const result = await verifyPremiumOrQuota(userId, 'recipe');
+    if (result.isPremium) {
+      return { success: true, generationsLeft: 999 }; // Unlimited for premium/trial
+    }
+    return { success: true, generationsLeft: Math.max(0, result.limit - result.currentUsed) };
   } catch (error) {
     console.error('Error incrementing free generations:', error);
     return { success: false, generationsLeft: 0 };

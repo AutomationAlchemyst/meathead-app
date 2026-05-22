@@ -6,10 +6,19 @@ import { estimateMacros } from '@/ai/flows/estimate-macros';
 import { getKetoGuidance } from '@/ai/flows/get-keto-guidance';
 import { adminDb, admin } from '@/lib/firebaseAdmin';
 import { isSameDay, subDays } from 'date-fns';
+import { getClientIp, ipRateLimiter, userRateLimiter } from '@/lib/rate-limit';
 
 export async function logFoodWithAIAction(idToken: string, query: string, dateStr: string) {
   try {
     const uid = await verifyIdToken(idToken);
+    
+    // Rate limit check
+    const ip = await getClientIp();
+    const ipLimit = ipRateLimiter.check(ip);
+    const userLimit = userRateLimiter.check(uid);
+    if (!ipLimit.success || !userLimit.success) {
+      return { error: 'Rate limit exceeded. Please wait a minute before logging food with AI.' };
+    }
     
     // Verify foodLog quota
     await verifyPremiumOrQuota(uid, 'foodLog');

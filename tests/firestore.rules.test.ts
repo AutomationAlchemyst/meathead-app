@@ -156,23 +156,53 @@ describe.runIf(isEmulatorRunning)('Firestore Security Rules', () => {
       })).resolves.not.toThrow();
     });
 
-    it('denies owner from updating protected fields', async () => {
+    it('denies owner from updating protected and sensitive fields', async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const adminDb = context.firestore();
         await setDoc(doc(adminDb, 'users', aliceUid), {
           displayName: 'Alice',
           isAdmin: false,
           isPremium: false,
+          stripeCustomerId: 'cus_123',
+          stripeSubscriptionId: 'sub_123',
+          premiumSubscriptionStatus: 'active',
         });
       });
 
       const aliceDb = getFirestoreForUser(aliceUid);
+      
+      // Test individual protected billing/auth fields
       await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
         isPremium: true,
       })).rejects.toThrow();
 
       await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
         isAdmin: true,
+      })).rejects.toThrow();
+
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        stripeCustomerId: 'cus_new',
+      })).rejects.toThrow();
+
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        stripeSubscriptionId: 'sub_new',
+      })).rejects.toThrow();
+
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        premiumSubscriptionStatus: 'canceled',
+      })).rejects.toThrow();
+
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        trialEndsAt: new Date(),
+      })).rejects.toThrow();
+
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        subscriptionUpdatedAt: new Date(),
+      })).rejects.toThrow();
+
+      // Test that arbitrary new sensitive/unknown fields also fail
+      await expect(updateDoc(doc(aliceDb, 'users', aliceUid), {
+        someUnallowlistedNewField: 'should_fail',
       })).rejects.toThrow();
     });
   });

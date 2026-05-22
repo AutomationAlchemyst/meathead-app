@@ -18,6 +18,12 @@ service cloud.firestore {
         request.resource.data.isAdmin == false &&
         request.resource.data.isPremium == false;
         
+      // WARNING: When adding new fields to the user document, ensure they are NOT added
+      // to the allowlist below unless they are explicitly safe for the user to modify directly.
+      // Sensitive billing, entitlement, and authorization fields (e.g. isAdmin, isPremium,
+      // stripeCustomerId, stripeSubscriptionId, premiumSubscriptionStatus, trialEndsAt)
+      // must NEVER be added to this allowlist.
+      //
       // Allow owner to update only allowlisted fields, admins can update all
       allow update: if request.auth != null && (
         isAdmin() || (
