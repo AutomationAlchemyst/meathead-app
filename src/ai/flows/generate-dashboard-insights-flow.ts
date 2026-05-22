@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview Generates personalized, contextual dashboard insights.
  */

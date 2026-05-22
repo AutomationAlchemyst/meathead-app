@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Parses a natural language description of a meal into structured food items and quantities.
  *

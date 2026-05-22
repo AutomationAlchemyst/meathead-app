@@ -8,8 +8,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import WorkoutPlanForm from '@/components/workout-planner/WorkoutPlanForm';
 import WorkoutPlanDisplay from '@/components/workout-planner/WorkoutPlanDisplay';
 import type { GenerateWorkoutPlanInput, GenerateWorkoutPlanOutput, AdaptWorkoutScheduleInput, AdaptWorkoutScheduleOutput } from '@/ai/schemas/workout-schemas'; 
-import { generateWorkoutPlan } from '@/ai/flows/generate-workout-plan-flow';
-import { adaptWorkoutSchedule } from '@/ai/flows/adapt-workout-schedule-flow';
+import { generateWorkoutPlanAction, adaptWorkoutScheduleAction } from '@/actions/workout';
+import { startTrialAction } from '@/actions/user';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dumbbell, AlertCircle, Loader2, Gem, Zap, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import WorkoutPlanSkeleton from '@/components/workout-planner/WorkoutPlanSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, Timestamp, onSnapshot } from 'firebase/firestore';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
 import { Button } from '@/components/ui/button';
 
@@ -52,14 +52,20 @@ export default function WorkoutPlannerPage(): ReactElement {
   const [initialLoading, setInitialLoading] = useState(true); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [generationTrialDaysRemaining, setGenerationTrialDaysRemaining] = useState(0);
-  const [monthlyFreePlanGenerationsUsed, setMonthlyFreePlanGenerationsUsed] = useState(0);
-  const [generationTrialAvailable, setGenerationTrialAvailable] = useState(true);
+  const [workoutsUsed, setWorkoutsUsed] = useState(0);
+  const [isStartingTrial, setIsStartingTrial] = useState(false);
 
-  const canGenerateNewPlan = isPremium || generationTrialDaysRemaining > 0 || monthlyFreePlanGenerationsUsed < MAX_FREE_PLAN_GENERATIONS;
-  const freePlanGenerationsLeft = MAX_FREE_PLAN_GENERATIONS - monthlyFreePlanGenerationsUsed;
-  const canAdaptCurrentPlan = isPremium || generationTrialDaysRemaining > 0;
+  // DB Trial & Quota calculations
+  const trialEndsAt = userProfile?.trialEndsAt;
+  const trialUsed = userProfile?.trialUsed;
+  const trialDaysRemaining = trialEndsAt
+    ? Math.max(0, Math.ceil((trialEndsAt.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const trialAvailable = !trialUsed && !isPremium;
 
+  const freePlanGenerationsLeft = Math.max(0, MAX_FREE_PLAN_GENERATIONS - workoutsUsed);
+  const canGenerateNewPlan = isPremium || trialDaysRemaining > 0 || freePlanGenerationsLeft > 0;
+  const canAdaptCurrentPlan = isPremium || trialDaysRemaining > 0;
 
   useEffect(() => {
     if (!authLoading && userProfile) {
@@ -72,18 +78,41 @@ export default function WorkoutPlannerPage(): ReactElement {
     }
   }, [userProfile, authLoading]);
 
-  const incrementPlanGenerationUsage = () => {
-    if (!isPremium && generationTrialDaysRemaining <= 0) {
-      setMonthlyFreePlanGenerationsUsed(prev => prev + 1);
+  // Quota Listener
+  useEffect(() => {
+    if (!user) return;
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const quotaDocRef = doc(db, 'users', user.uid, 'quotas', currentMonth);
+
+    const unsubscribe = onSnapshot(quotaDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setWorkoutsUsed(data.workoutsUsed || 0);
+      } else {
+        setWorkoutsUsed(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const startGenerationTrial = async () => {
+    if (!user) return;
+    setIsStartingTrial(true);
+    try {
+      const idToken = await user.getIdToken();
+      const res = await startTrialAction(idToken);
+      if ('error' in res && res.error) {
+        throw new Error(res.error);
+      }
+      toast({ title: "Premium Trial Started!", description: "Enjoy full AI workout planning features for 3 days." });
+    } catch (e: any) {
+      toast({ title: "Failed to start trial", description: e.message, variant: "destructive" });
+    } finally {
+      setIsStartingTrial(false);
     }
   };
-
-  const startGenerationTrial = () => {
-    setGenerationTrialDaysRemaining(3); 
-    setGenerationTrialAvailable(false); 
-    toast({ title: "Premium Trial Started!", description: "Enjoy full AI workout planning features for 3 days." });
-  };
-
 
   const handleGeneratePlan = async (input: GenerateWorkoutPlanInput) => {
     if (!user) {
@@ -94,29 +123,35 @@ export default function WorkoutPlannerPage(): ReactElement {
         toast({ title: "Limit Reached", description: "Upgrade to Premium or start a trial for more AI workout plans.", variant: "destructive" });
         return;
     }
-    incrementPlanGenerationUsage();
     
     setIsLoading(true);
     setError(null);
 
     try {
-      const plan = await generateWorkoutPlan(input);
-      setWorkoutPlan(plan);
-
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, {
-        activeWorkoutPlan: plan,
-        updatedAt: serverTimestamp()
-      });
-
-      if (updateUserProfileInContext && userProfile) {
-        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: plan, updatedAt: serverTimestamp() as any as Timestamp });
+      const idToken = await user.getIdToken();
+      const result = await generateWorkoutPlanAction(idToken, input);
+      if ('error' in result && result.error) {
+        throw new Error(result.error);
       }
-      
-      toast({
-        title: "Workout Plan Generated & Saved!",
-        description: "Coach Ath has designed and saved your personalized plan.",
-      });
+      if (result.success && result.plan) {
+        const plan = result.plan;
+        setWorkoutPlan(plan);
+
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, {
+          activeWorkoutPlan: plan,
+          updatedAt: serverTimestamp()
+        });
+
+        if (updateUserProfileInContext && userProfile) {
+          updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: plan, updatedAt: serverTimestamp() as any as Timestamp });
+        }
+        
+        toast({
+          title: "Workout Plan Generated & Saved!",
+          description: "Coach Ath has designed and saved your personalized plan.",
+        });
+      }
     } catch (e: any) {
       const errorMessage = e.message || "Failed to generate workout plan. Coach Ath might be taking a nap.";
       setError(errorMessage);
@@ -152,23 +187,30 @@ export default function WorkoutPlannerPage(): ReactElement {
     };
 
     try {
-      const adaptedOutput: AdaptWorkoutScheduleOutput = await adaptWorkoutSchedule(adaptationInput);
-      const newAdaptedPlan: GenerateWorkoutPlanOutput = {
-        planName: adaptedOutput.adaptedPlanName,
-        planDurationDays: currentPlan.planDurationDays, 
-        introduction: currentPlan.introduction, 
-        dailyWorkouts: adaptedOutput.updatedDailyWorkouts,
-        overallNotes: adaptedOutput.overallNotes || [],
-        originalFitnessLevel: currentPlan.originalFitnessLevel, 
-        originalPrimaryGoal: currentPlan.originalPrimaryGoal,   
-      };
-      setWorkoutPlan(newAdaptedPlan);
-      const userDocRef = doc(db, 'users', user.uid);
-      await updateDoc(userDocRef, { activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() });
-      if (updateUserProfileInContext) {
-        updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() as any as Timestamp });
+      const idToken = await user.getIdToken();
+      const result = await adaptWorkoutScheduleAction(idToken, adaptationInput);
+      if ('error' in result && result.error) {
+        throw new Error(result.error);
       }
-      toast({ title: "Workout Plan Adapted!", description: adaptedOutput.adaptationSummary || "Your plan has been adjusted.", duration: 7000 });
+      if (result.success && result.plan) {
+        const adaptedOutput: AdaptWorkoutScheduleOutput = result.plan;
+        const newAdaptedPlan: GenerateWorkoutPlanOutput = {
+          planName: adaptedOutput.adaptedPlanName,
+          planDurationDays: currentPlan.planDurationDays, 
+          introduction: currentPlan.introduction, 
+          dailyWorkouts: adaptedOutput.updatedDailyWorkouts,
+          overallNotes: adaptedOutput.overallNotes || [],
+          originalFitnessLevel: currentPlan.originalFitnessLevel, 
+          originalPrimaryGoal: currentPlan.originalPrimaryGoal,   
+        };
+        setWorkoutPlan(newAdaptedPlan);
+        const userDocRef = doc(db, 'users', user.uid);
+        await updateDoc(userDocRef, { activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() });
+        if (updateUserProfileInContext) {
+          updateUserProfileInContext({ ...userProfile, activeWorkoutPlan: newAdaptedPlan, updatedAt: serverTimestamp() as any as Timestamp });
+        }
+        toast({ title: "Workout Plan Adapted!", description: adaptedOutput.adaptationSummary || "Your plan has been adjusted.", duration: 7000 });
+      }
     } catch (e: any) {
       const errorMessage = e.message || "Failed to adapt workout plan. Coach Ath might be puzzled.";
       setError(errorMessage);
@@ -190,11 +232,11 @@ export default function WorkoutPlannerPage(): ReactElement {
         </Alert>
       );
     }
-    if (generationTrialDaysRemaining > 0) {
+    if (trialDaysRemaining > 0) {
       return (
         <Alert variant="default" className="mb-6 bg-blue-50 border-blue-300 text-blue-700 text-sm">
           <Zap className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="font-semibold">Workout Planner Trial: {generationTrialDaysRemaining} days remaining!</AlertTitle>
+          <AlertTitle className="font-semibold">Workout Planner Trial: {trialDaysRemaining} days remaining!</AlertTitle>
           <AlertDescription>Full AI generation and adaptation capabilities unlocked.</AlertDescription>
         </Alert>
       );
@@ -224,16 +266,17 @@ export default function WorkoutPlannerPage(): ReactElement {
           <motion.div variants={itemVariants}>
             {renderFreemiumHeader()}
           </motion.div>
-
-          {!canGenerateNewPlan && !isPremium && generationTrialDaysRemaining <= 0 && (
+ 
+          {!canGenerateNewPlan && !isPremium && trialDaysRemaining <= 0 && (
               <motion.div variants={itemVariants} className="mb-6">
                 <UpgradePrompt
                     featureName="AI Workout Planner"
                     message="You've used your free AI plan generation. Upgrade to Premium or start a trial for unlimited personalized workout plans and adaptation!"
                 />
-                {generationTrialAvailable && (
-                    <Button onClick={startGenerationTrial} size="lg" className="w-full mt-4">
-                        <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial for Workout Planner
+                {trialAvailable && (
+                    <Button onClick={startGenerationTrial} disabled={isStartingTrial} size="lg" className="w-full mt-4">
+                        {isStartingTrial ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                        Start 3-Day Free Trial for Workout Planner
                     </Button>
                 )}
               </motion.div>
@@ -254,7 +297,7 @@ export default function WorkoutPlannerPage(): ReactElement {
                       onSubmit={handleGeneratePlan} 
                       isLoading={isLoading || initialLoading}
                       canGenerate={canGenerateNewPlan}
-                      freeGenerationsLeft={isPremium || generationTrialDaysRemaining > 0 ? Infinity : freePlanGenerationsLeft}
+                      freeGenerationsLeft={isPremium || trialDaysRemaining > 0 ? Infinity : freePlanGenerationsLeft}
                   />
                 </CardContent>
               </Card>

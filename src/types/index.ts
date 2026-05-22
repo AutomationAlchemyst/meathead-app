@@ -30,6 +30,9 @@ export interface UserProfile {
   // Free generation tracking
   freeGenerationsUsedThisMonth?: number;
   freeGenerationsMonth?: string; // YYYY-MM format for monthly reset
+  trialStartedAt?: Timestamp | null;
+  trialEndsAt?: Timestamp | null;
+  trialUsed?: boolean;
 }
 
 export interface FoodLog {

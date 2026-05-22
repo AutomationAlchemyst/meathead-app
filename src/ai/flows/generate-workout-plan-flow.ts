@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Generates personalized workout plans.
  *

@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -11,10 +10,27 @@ service cloud.firestore {
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      // Allow users to read/write their own profile, admins can read all
+      // Allow users to read their own profile, admins can read all
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      
+      // Allow owner to create profile if admin and premium are initialised to false
+      allow create: if request.auth != null && request.auth.uid == userId &&
+        request.resource.data.isAdmin == false &&
+        request.resource.data.isPremium == false;
+        
+      // Allow owner to update only allowlisted fields, admins can update all
+      allow update: if request.auth != null && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName', 'myWhy', 'currentWeight', 'targetWeight', 'activityLevel', 
+            'startingWeight', 'journeyStartDate', 'targetWaterIntake', 'targetCalories', 
+            'targetProtein', 'targetCarbs', 'targetFat', 'estimatedGoalDate', 'updatedAt', 
+            'currentStreak', 'lastLogDate', 'activeWorkoutPlan'
+          ])
+        )
+      );
+      
       allow delete: if false;
 
       // Rules for the 'foodLogs' subcollection
@@ -45,18 +61,21 @@ service cloud.firestore {
         allow update: if request.auth != null && request.auth.uid == userId;
         allow delete: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Rules for the 'quotas' subcollection
+      match /quotas/{month} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
     }
 
     // Rules for the 'feedbackSubmissions' collection
     match /feedbackSubmissions/{feedbackId} {
-      // Allow create if the document being written contains a 'userId' field
-      // that is a non-empty string. The server action is responsible for
-      // ensuring this 'userId' is valid and corresponds to the authenticated user.
-      allow create: if request.resource.data.userId is string && request.resource.data.userId != "";
+      // Allow create if authenticated and the feedback matches the owner's UID
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       
-      // Users can only read their own feedback submissions.
-      // Admins can read all feedback submissions.
-      allow read: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
+      // Users can only read their own feedback submissions. Admins can read all.
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
       
       // Disallow client-side updates and deletes for feedback submissions.
       allow update, delete: if false;

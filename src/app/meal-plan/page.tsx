@@ -14,7 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Brain, Utensils, Beef, Wheat, Droplets, Flame, Info, BookOpen } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { generateMealPlan, type GenerateMealPlanInput, type GenerateMealPlanOutput, type MealItem } from '@/ai/flows/generate-meal-plan-flow';
+import type { GenerateMealPlanInput, GenerateMealPlanOutput, MealItem } from '@/ai/flows/generate-meal-plan-flow';
+import { generateMealPlanAction } from '@/actions/meal-plan';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Link from 'next/link';
@@ -175,8 +176,14 @@ export default function MealPlanPage() {
 
     try {
       const input: GenerateMealPlanInput = { targetCalories };
-      const plan = await generateMealPlan(input);
-      setMealPlan(plan);
+      const idToken = await user.getIdToken();
+      const result = await generateMealPlanAction(idToken, input);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      if (result.success && result.plan) {
+        setMealPlan(result.plan);
+      }
     } catch (e: any) {
       console.error("Error generating meal plan:", e);
       setError(e.message || "Failed to generate meal plan. Please try again.");

@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Adapts a user's workout plan if a day is missed.
  *

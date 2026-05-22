@@ -1,5 +1,4 @@
-
-'use server';
+// Server-internal flow - wrapped in src/actions/recipe.ts
 /**
  * @fileOverview Generates detailed, personalized Keto recipes.
  *

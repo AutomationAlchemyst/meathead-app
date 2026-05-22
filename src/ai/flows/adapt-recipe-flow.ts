@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Adapts an existing recipe to be keto-friendly, halal, or suggests ingredient substitutions.
  *

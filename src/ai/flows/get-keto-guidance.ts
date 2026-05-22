@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Determines if a food item is keto-friendly and provides suggestions.
  *

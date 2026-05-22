@@ -5,6 +5,7 @@ import { doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile, ActivityLevel } from '@/types';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { adminAuth, adminDb, admin } from '@/lib/firebaseAdmin';
 
 const FREE_GENERATIONS_PER_MONTH = 3;
 
@@ -107,33 +108,113 @@ export async function updateUserProfile(userId: string, formData: FormData) {
   }
 }
 
+export async function verifyIdToken(idToken: string): Promise<string> {
+  if (!idToken) {
+    throw new Error('ID Token is required for server actions.');
+  }
+  const decodedToken = await adminAuth.verifyIdToken(idToken);
+  return decodedToken.uid;
+}
+
+export async function verifyPremiumOrQuota(uid: string, feature: 'recipe' | 'workout' | 'foodLog'): Promise<{ success: boolean; isPremium: boolean }> {
+  const userRef = adminDb.collection('users').doc(uid);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const quotaRef = userRef.collection('quotas').doc(currentMonth);
+
+  return await adminDb.runTransaction(async (transaction) => {
+    const userDoc = await transaction.get(userRef);
+    if (!userDoc.exists) {
+      throw new Error('User profile not found.');
+    }
+
+    const userData = userDoc.data() || {};
+    const isPremium = userData.isPremium === true;
+    const trialEndsAt = userData.trialEndsAt;
+    const hasActiveTrial = trialEndsAt && trialEndsAt.toDate() > now;
+
+    if (isPremium || hasActiveTrial) {
+      return { success: true, isPremium: true };
+    }
+
+    // Check quota
+    const quotaDoc = await transaction.get(quotaRef);
+    const quotaData = quotaDoc.data() || {};
+
+    let limit = 3; // recipes and foodLogs
+    let field = 'recipesUsed';
+
+    if (feature === 'workout') {
+      limit = 1;
+      field = 'workoutsUsed';
+    } else if (feature === 'foodLog') {
+      limit = 3;
+      field = 'foodLogsUsed';
+    }
+
+    const currentUsed = quotaData[field] || 0;
+    if (currentUsed >= limit) {
+      throw new Error(`You have reached your free monthly limit of ${limit} ${feature}s. Please upgrade to Premium or start a trial!`);
+    }
+
+    // Increment count
+    transaction.set(quotaRef, {
+      [field]: currentUsed + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    return { success: true, isPremium: false };
+  });
+}
+
+export async function startTrialAction(idToken: string) {
+  try {
+    const uid = await verifyIdToken(idToken);
+    const userRef = adminDb.collection('users').doc(uid);
+    const now = new Date();
+    const trialDurationMs = 3 * 24 * 60 * 60 * 1000; // 3 days
+    const trialEnds = new Date(now.getTime() + trialDurationMs);
+
+    const result = await adminDb.runTransaction(async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      if (!userDoc.exists) {
+        throw new Error('User profile not found.');
+      }
+
+      const userData = userDoc.data() || {};
+      if (userData.trialUsed === true) {
+        throw new Error('You have already used your free trial.');
+      }
+
+      transaction.update(userRef, {
+        trialStartedAt: admin.firestore.Timestamp.fromDate(now),
+        trialEndsAt: admin.firestore.Timestamp.fromDate(trialEnds),
+        trialUsed: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { success: true };
+    });
+
+    revalidatePath('/profile');
+    revalidatePath('/dashboard');
+    return result;
+  } catch (error: any) {
+    console.error('[startTrialAction] Error starting trial:', error.message);
+    return { error: error.message || 'Failed to start trial.' };
+  }
+}
+
 export async function incrementFreeGenerationsUsed(userId: string): Promise<{ success: boolean; generationsLeft: number }> {
   if (!userId) return { success: false, generationsLeft: 0 };
 
   try {
-    const userDocRef = doc(db, 'users', userId);
+    await verifyPremiumOrQuota(userId, 'recipe');
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-    const userDoc = await getDoc(userDocRef);
-    if (!userDoc.exists()) {
-      return { success: false, generationsLeft: FREE_GENERATIONS_PER_MONTH };
-    }
-
-    const userData = userDoc.data();
-    const storedMonth = userData.freeGenerationsMonth;
-    const storedCount = userData.freeGenerationsUsedThisMonth || 0;
-
-    // Reset count if it's a new month
-    const newCount = storedMonth === currentMonth ? storedCount + 1 : 1;
-
-    await updateDoc(userDocRef, {
-      freeGenerationsUsedThisMonth: newCount,
-      freeGenerationsMonth: currentMonth,
-      updatedAt: serverTimestamp(),
-    });
-
-    return { success: true, generationsLeft: Math.max(0, FREE_GENERATIONS_PER_MONTH - newCount) };
+    const quotaDoc = await adminDb.collection('users').doc(userId).collection('quotas').doc(currentMonth).get();
+    const recipesUsed = quotaDoc.exists ? (quotaDoc.data()?.recipesUsed || 0) : 0;
+    return { success: true, generationsLeft: Math.max(0, 3 - recipesUsed) };
   } catch (error) {
     console.error('Error incrementing free generations:', error);
     return { success: false, generationsLeft: 0 };

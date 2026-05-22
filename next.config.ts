@@ -31,6 +31,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  serverExternalPackages: ['genkit', '@genkit-ai/core', '@genkit-ai/ai', '@genkit-ai/flow', '@genkit-ai/googleai'],
   images: {
     remotePatterns: [
       {

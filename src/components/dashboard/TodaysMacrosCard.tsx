@@ -106,41 +106,56 @@ export const TodaysMacrosCard = () => {
         )}
       </CardHeader>
       <CardContent className="flex flex-col flex-grow pt-2 relative z-10">
-        <div className="flex-grow space-y-4">
-          <div>
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Flame className="h-4 w-4 mr-1 text-primary"/>Calories</span>
-              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.calories?.toFixed(0)}</span> / {targetCalories?.toFixed(0)} kcal</span>
+        {targetCalories && targetProtein && targetCarbs && targetFat ? (
+          <>
+            <div className="flex-grow space-y-4">
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-medium text-foreground flex items-center"><Flame className="h-4 w-4 mr-1 text-primary"/>Calories</span>
+                  <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.calories?.toFixed(0)}</span> / {targetCalories?.toFixed(0)} kcal</span>
+                </div>
+                <Progress value={getProgressValue(todaysMacros?.calories, targetCalories)} className="h-2 [&>div]:bg-primary" />
+              </div>
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-medium text-foreground flex items-center"><Beef className="h-4 w-4 mr-1 text-chart-2"/>Protein</span>
+                  <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.protein?.toFixed(1)}</span> / {targetProtein?.toFixed(1)} g</span>
+                </div>
+                <Progress value={getProgressValue(todaysMacros?.protein, targetProtein)} className="h-2 [&>div]:bg-chart-2" />
+              </div>
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-medium text-foreground flex items-center"><Wheat className="h-4 w-4 mr-1 text-chart-3"/>Carbs</span>
+                  <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.carbs?.toFixed(1)}</span> / {targetCarbs?.toFixed(1)} g</span>
+                </div>
+                <Progress value={getProgressValue(todaysMacros?.carbs, targetCarbs)} className="h-2 [&>div]:bg-chart-3" />
+              </div>
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-sm font-medium text-foreground flex items-center"><Egg className="h-4 w-4 mr-1 text-chart-4"/>Fat</span>
+                  <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.fat?.toFixed(1)}</span> / {targetFat?.toFixed(1)} g</span>
+                </div>
+                <Progress value={getProgressValue(todaysMacros?.fat, targetFat)} className="h-2 [&>div]:bg-chart-4" />
+              </div>
             </div>
-            <Progress value={getProgressValue(todaysMacros?.calories, targetCalories)} className="h-2 [&>div]:bg-primary" />
+            <Button variant={foodLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full !mt-6 bg-card/40 border-primary/20 hover:bg-primary/20 hover:text-primary transition-all duration-300">
+              <Link href="/food-logging">
+                {foodLoggedToday ? ( <><Utensils className="mr-2 h-4 w-4"/>Log Another Meal</> ) : ( <><Utensils className="mr-2 h-4 w-4"/>Log Breakfast</> )}
+              </Link>
+            </Button>
+          </>
+        ) : (
+          <div className="flex-grow flex flex-col justify-center items-center text-center p-4 space-y-3">
+            <Utensils className="h-10 w-10 text-muted-foreground mb-1" />
+            <p className="text-sm font-semibold text-foreground">Targets Not Configured</p>
+            <p className="text-xs text-muted-foreground max-w-[200px]">
+              Set your target calories and macronutrients in your profile to start tracking your daily progress.
+            </p>
+            <Button size="sm" asChild className="w-full mt-2 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all duration-300">
+              <Link href="/profile">Configure Targets</Link>
+            </Button>
           </div>
-          <div>
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Beef className="h-4 w-4 mr-1 text-chart-2"/>Protein</span>
-              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.protein?.toFixed(1)}</span> / {targetProtein?.toFixed(1)} g</span>
-            </div>
-            <Progress value={getProgressValue(todaysMacros?.protein, targetProtein)} className="h-2 [&>div]:bg-chart-2" />
-          </div>
-          <div>
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Wheat className="h-4 w-4 mr-1 text-chart-3"/>Carbs</span>
-              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.carbs?.toFixed(1)}</span> / {targetCarbs?.toFixed(1)} g</span>
-            </div>
-            <Progress value={getProgressValue(todaysMacros?.carbs, targetCarbs)} className="h-2 [&>div]:bg-chart-3" />
-          </div>
-          <div>
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-foreground flex items-center"><Egg className="h-4 w-4 mr-1 text-chart-4"/>Fat</span>
-              <span className="text-sm text-muted-foreground"><span className="text-foreground font-bold">{todaysMacros?.fat?.toFixed(1)}</span> / {targetFat?.toFixed(1)} g</span>
-            </div>
-            <Progress value={getProgressValue(todaysMacros?.fat, targetFat)} className="h-2 [&>div]:bg-chart-4" />
-          </div>
-        </div>
-        <Button variant={foodLoggedToday ? "outline" : "default"} size="sm" asChild className="w-full !mt-6 bg-card/40 border-primary/20 hover:bg-primary/20 hover:text-primary transition-all duration-300">
-          <Link href="/food-logging">
-            {foodLoggedToday ? ( <><Utensils className="mr-2 h-4 w-4"/>Log Another Meal</> ) : ( <><Utensils className="mr-2 h-4 w-4"/>Log Breakfast</> )}
-          </Link>
-        </Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,33 +1,23 @@
 'use client';
 
-import type { ReactElement } from 'react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Brain, Utensils, Soup, ShoppingBasket, Clock, Sparkles, AlertCircle, CookingPot, Hash, Info, PlusCircle, CopyCheck, GitFork, Refrigerator, ShieldCheck, Flame, Gem, Zap, Minus, Plus } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardDescription, CardTitle } from '@/components/ui/card';
+import { Loader2, Brain, AlertCircle, Sparkles, Gem, Zap, Info, CopyCheck, Refrigerator, GitFork } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-import { generateDetailedRecipe, type GenerateDetailedRecipeInput } from '@/ai/flows/generate-detailed-recipe-flow';
-import type { GenerateDetailedRecipeOutput, RecipeIngredient, RecipeStep, RecipeMacros } from '@/ai/schemas/recipe-schemas';
-import { adaptRecipe, type AdaptRecipeInput, type AdaptRecipeOutput } from '@/ai/flows/adapt-recipe-flow';
-import { generateRecipeFromIngredients, type GenerateRecipeFromIngredientsInput, type GenerateRecipeFromIngredientsOutput } from '@/ai/flows/generate-recipe-from-ingredients-flow';
-
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, runTransaction, serverTimestamp, Timestamp } from 'firebase/firestore';
-import type { FoodLog } from '@/types';
+import { Badge } from '@/components/ui/badge';
+
+// New server action integrated components and hooks
+import { useRecipeGeneration } from '@/hooks/useRecipeGeneration';
+import { GenerateRecipeForm } from '@/components/recipe-generator/GenerateRecipeForm';
+import { FridgeRecipeForm } from '@/components/recipe-generator/FridgeRecipeForm';
+import { AdaptRecipeForm } from '@/components/recipe-generator/AdaptRecipeForm';
+import { GeneratedRecipeDisplay } from '@/components/recipe-generator/GeneratedRecipeDisplay';
 import AdaptedRecipeDisplay from '@/components/recipe-generator/AdaptedRecipeDisplay';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
 
@@ -48,186 +38,12 @@ const itemVariants = {
   },
 };
 
-
-const dietaryPreferences = ["Keto", "Keto Dairy-Free", "Keto Nut-Free", "Keto Vegetarian", "Low-Carb General"] as const;
-const mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Side Dish", "Any"] as const;
-const cookingTimes = ["Quick (under 30 mins)", "Moderate (30-60 mins)", "No Preference"] as const;
-const spiceLevels = ["Mild", "Medium", "Spicy", "Any"] as const;
-const adaptationGoals = [
-    { value: "makeKeto", label: "Make it Keto" },
-    { value: "makeHalal", label: "Make it Halal" },
-    { value: "suggestSubstitutions", label: "Suggest Ingredient Substitutions" },
-    { value: "makeKetoHalal", label: "Make it Keto & Halal" }
-] as const;
-type AdaptationGoalValue = typeof adaptationGoals[number]['value'];
-
-
-interface GeneratedRecipeDisplayProps {
-  recipe: GenerateDetailedRecipeOutput;
-  servingsToLog: number;
-  onServingsChange: (servings: number) => void;
-  onLogRecipe: (recipeToLog: GenerateDetailedRecipeOutput, servingsToLog: number) => Promise<void>;
-  isLoggingRecipe: boolean;
-  recipeSource?: string;
-}
-
-function GeneratedRecipeDisplay({ recipe, servingsToLog, onServingsChange, onLogRecipe, isLoggingRecipe, recipeSource }: GeneratedRecipeDisplayProps) {
-  const { user } = useAuth();
-
-  // Scale macros for the selected number of servings
-  const scale = servingsToLog / recipe.servings;
-  const scaledMacros: RecipeMacros = {
-    calories: Math.round(recipe.macrosPerServing.calories * scale),
-    protein: Math.round(recipe.macrosPerServing.protein * scale * 10) / 10,
-    carbs: Math.round(recipe.macrosPerServing.carbs * scale * 10) / 10,
-    fat: Math.round(recipe.macrosPerServing.fat * scale * 10) / 10,
-  };
-
-  const incrementServings = () => onServingsChange(Math.min(servingsToLog + 1, recipe.servings));
-  const decrementServings = () => onServingsChange(Math.max(servingsToLog - 1, 1));
-
-  return (
-    <Card className="mt-8 shadow-xl">
-      <CardHeader className="bg-primary/10 p-6 rounded-t-lg">
-        <CardTitle className="text-3xl font-headline text-primary flex items-center">
-          <Soup className="h-8 w-8 mr-3" /> {recipe.recipeName}
-        </CardTitle>
-        <CardDescription className="text-base pt-1">{recipe.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-            <Clock className="h-5 w-5 text-primary" />
-            <div>
-              <span className="font-semibold">Prep:</span> {recipe.prepTime}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-            <Clock className="h-5 w-5 text-primary" />
-            <div>
-              <span className="font-semibold">Cook:</span> {recipe.cookTime}
-            </div>
-          </div>
-          <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-            <Hash className="h-5 w-5 text-primary" />
-            <div>
-              <span className="font-semibold">Servings:</span> {recipe.servings}
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        <div>
-          <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><ShoppingBasket className="h-6 w-6 mr-2 text-primary" />Ingredients</h3>
-          <ul className="list-disc list-inside space-y-1.5 pl-2 columns-1 sm:columns-2 text-sm">
-            {recipe.ingredients.map((ing: RecipeIngredient, index: number) => (
-              <li key={index}>
-                {ing.quantity} {ing.unit} {ing.name}
-                {ing.notes && <span className="text-muted-foreground text-xs"> ({ing.notes})</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <Separator />
-
-        <div>
-          <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><CookingPot className="h-6 w-6 mr-2 text-primary" />Instructions</h3>
-          <ol className="space-y-3">
-            {recipe.instructions.map((step: RecipeStep) => (
-              <li key={step.stepNumber} className="flex">
-                <Badge variant="secondary" className="mr-3 h-6 w-6 flex items-center justify-center text-primary font-bold shrink-0">{step.stepNumber}</Badge>
-                <p className="text-sm leading-relaxed">{step.instruction}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <Separator />
-
-        <div>
-          <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><Sparkles className="h-6 w-6 mr-2 text-primary" />Macros</h3>
-          {/* Serving size selector */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-muted rounded-lg">
-            <span className="text-sm font-medium">Log how many servings?</span>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={decrementServings}
-                disabled={servingsToLog <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="font-bold text-lg w-8 text-center">{servingsToLog}</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={incrementServings}
-                disabled={servingsToLog >= recipe.servings}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <span className="text-xs text-muted-foreground">/ {recipe.servings} available</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            {(Object.keys(scaledMacros) as Array<keyof RecipeMacros>).map(key => (
-              <div key={String(key)} className="p-3 bg-muted rounded-lg text-center">
-                <p className="font-semibold capitalize">{key}</p>
-                <p>{scaledMacros[key]}{key === 'calories' ? ' kcal' : ' g'}</p>
-                {servingsToLog !== 1 && (
-                  <p className="text-xs text-muted-foreground">({recipe.macrosPerServing[key]}{key === 'calories' ? ' kcal' : ' g'} &times; {servingsToLog})</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {recipe.tips && recipe.tips.length > 0 && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-xl font-semibold text-foreground mb-3 flex items-center"><Info className="h-6 w-6 mr-2 text-primary" />Chef Ath's Tips</h3>
-              <ul className="list-disc list-inside space-y-1 pl-2 text-sm">
-                {recipe.tips.map((tip: string, index: number) => (
-                  <li key={index}>{tip}</li>
-                ))}
-              </ul>
-            </div>
-          </>
-        )}
-      </CardContent>
-      <CardFooter className="p-6 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
-        <p className="text-xs text-muted-foreground text-center sm:text-left">Recipe generated by Chef Ath. Nutritional information is an estimate. Always verify ingredients for dietary compliance.</p>
-        {user && (
-          <Button
-            onClick={() => onLogRecipe(recipe, servingsToLog)}
-            disabled={isLoggingRecipe}
-            size="sm"
-            className="w-full sm:w-auto"
-          >
-            {isLoggingRecipe ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            {isLoggingRecipe ? 'Logging Meal...' : `Log ${servingsToLog} Serving${servingsToLog !== 1 ? 's' : ''}`}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
-}
-
 function RecipeGeneratorSkeleton() {
   return (
-    <Card className="mt-8 shadow-xl">
-      <CardHeader className="bg-primary/10 p-6 rounded-t-lg">
+    <Card className="mt-8 shadow-xl bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden">
+      <CardHeader className="bg-primary/10 p-6 rounded-t-2xl">
         <Skeleton className="h-8 w-3/4 mb-2" />
         <Skeleton className="h-5 w-full" />
-        <Skeleton className="h-5 w-2/3 mt-1" />
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -260,24 +76,20 @@ function RecipeGeneratorSkeleton() {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="p-6 border-t">
-        <Skeleton className="h-4 w-3/4" />
-      </CardFooter>
     </Card>
   );
 }
 
 function RecipeAdaptationSkeleton() {
   return (
-    <Card className="mt-8 shadow-xl">
-      <CardHeader className="bg-secondary/10 p-6 rounded-t-lg">
+    <Card className="mt-8 shadow-xl bg-card/40 backdrop-blur-xl border border-border/50 rounded-2xl overflow-hidden">
+      <CardHeader className="bg-secondary/10 p-6 rounded-t-2xl">
         <Skeleton className="h-8 w-3/4 mb-2" />
         <Skeleton className="h-5 w-full" />
       </CardHeader>
       <CardContent className="p-6 space-y-6">
         <Skeleton className="h-6 w-1/2 mb-2" />
         <Skeleton className="h-4 w-3/4 mb-4" />
-
         <Skeleton className="h-7 w-1/3 mb-3" />
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => <Skeleton key={`adapt-change-${i}`} className="h-10 w-full" />)}
@@ -285,166 +97,46 @@ function RecipeAdaptationSkeleton() {
         <Separator />
         <Skeleton className="h-7 w-1/3 mb-3" />
         <div className="space-y-2">
-            {[...Array(4)].map((_, i) => <Skeleton key={`adapt-ing-${i}`} className="h-5 w-full sm:w-1/2" />)}
-        </div>
-        <Separator />
-         <Skeleton className="h-7 w-1/3 mb-3" />
-         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[...Array(4)].map((_, i) => <Skeleton key={`adapt-macro-${i}`} className="h-16 w-full" />)}
+          {[...Array(4)].map((_, i) => <Skeleton key={`adapt-ing-${i}`} className="h-5 w-full sm:w-1/2" />)}
         </div>
       </CardContent>
-       <CardFooter className="p-6 border-t">
-        <Skeleton className="h-4 w-3/4" />
-      </CardFooter>
     </Card>
   );
 }
 
-
-
-const MAX_FREE_GENERATIONS = 3;
-
-function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-async function incrementFreeGenerationsUsedForUser(userId: string): Promise<number> {
-  const userDocRef = doc(db, 'users', userId);
-  const currentMonth = getCurrentMonth();
-
-  return runTransaction(db, async (transaction) => {
-    const userDoc = await transaction.get(userDocRef);
-    if (!userDoc.exists()) {
-      throw new Error('User profile not found. Please sign in again.');
-    }
-
-    const userData = userDoc.data();
-    const storedMonth = userData.freeGenerationsMonth;
-    const storedCount = typeof userData.freeGenerationsUsedThisMonth === 'number'
-      ? userData.freeGenerationsUsedThisMonth
-      : 0;
-    const nextCount = storedMonth === currentMonth ? storedCount + 1 : 1;
-
-    if (nextCount > MAX_FREE_GENERATIONS) {
-      throw new Error("You've used all your free generations for this month.");
-    }
-
-    transaction.update(userDocRef, {
-      freeGenerationsUsedThisMonth: nextCount,
-      freeGenerationsMonth: currentMonth,
-      updatedAt: serverTimestamp(),
-    });
-
-    return Math.max(0, MAX_FREE_GENERATIONS - nextCount);
-  });
-}
-
 export default function RecipeGeneratorPage() {
-  const { user, userProfile, loading: authLoading, isPremium } = useAuth();
-  const { toast } = useToast();
-  const [generatedRecipe, setGeneratedRecipe] = useState<GenerateDetailedRecipeOutput | null>(null);
-  const [isLoadingGeneration, setIsLoadingGeneration] = useState(false);
-  const [isLoggingGeneratedRecipe, setIsLoggingGeneratedRecipe] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [mainIngredients, setMainIngredients] = useState<string>('');
-  const [excludedIngredients, setExcludedIngredients] = useState<string>('');
-  const [generationFormState, setGenerationFormState] = useState<Partial<GenerateDetailedRecipeInput>>({
-    dietaryPreference: "Keto",
-    servings: 2,
-    cookingTimePreference: "No Preference",
-    mealType: "Any",
-    ensureHalal: false,
-    spiceLevel: "Any",
-  });
-  const [adaptedRecipeOutput, setAdaptedRecipeOutput] = useState<AdaptRecipeOutput | null>(null);
-  const [isLoadingAdaptation, setIsLoadingAdaptation] = useState(false);
-  const [isLoggingAdaptedRecipe, setIsLoggingAdaptedRecipe] = useState(false);
-  const [adaptationError, setAdaptationError] = useState<string | null>(null);
-  const [adaptationFormState, setAdaptationFormState] = useState<Partial<AdaptRecipeInput>>({
-    adaptationGoal: "makeKeto",
-    servings: 2,
-  });
-  const [originalRecipeText, setOriginalRecipeText] = useState('');
-  const [specificIngredientToSubstitute, setSpecificIngredientToSubstitute] = useState('');
-  const [preferredSubstitution, setPreferredSubstitution] = useState('');
-  const [additionalDietaryRestrictions, setAdditionalDietaryRestrictions] = useState('');
-  const [fromIngredientsRecipe, setFromIngredientsRecipe] = useState<GenerateRecipeFromIngredientsOutput | null>(null);
-  const [isLoadingFromIngredients, setIsLoadingFromIngredients] = useState(false);
-  const [isLoggingFromIngredientsRecipe, setIsLoggingFromIngredientsRecipe] = useState(false);
-  const [fromIngredientsError, setFromIngredientsError] = useState<string | null>(null);
-  const [availableFridgeIngredients, setAvailableFridgeIngredients] = useState<string>('');
-  const [excludedFridgeIngredients, setExcludedFridgeIngredients] = useState<string>('');
-  const [fromIngredientsFormState, setFromIngredientsFormState] = useState<Partial<Omit<GenerateRecipeFromIngredientsInput, 'availableIngredients' | 'excludedIngredients'>>>({
-    dietaryPreference: "Keto",
-    servings: 2,
-    mealType: "Any",
-  });
-  const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
-  const [trialAvailable, setTrialAvailable] = useState(true);
+  const {
+    user,
+    authLoading,
+    isPremium,
+    trialDaysRemaining,
+    trialAvailable,
+    freeGenerationsLeft,
+    canUseFeature,
+    generatedRecipe,
+    isLoadingGeneration,
+    generationError,
+    isLoggingGeneratedRecipe,
+    fromIngredientsRecipe,
+    isLoadingFromIngredients,
+    fromIngredientsError,
+    isLoggingFromIngredientsRecipe,
+    adaptedRecipeOutput,
+    isLoadingAdaptation,
+    adaptationError,
+    isLoggingAdaptedRecipe,
+    isStartingTrial,
+    startTrial,
+    generateRecipe,
+    generateFromIngredients,
+    adaptRecipe,
+    logRecipe,
+    logAdaptedRecipe,
+  } = useRecipeGeneration();
 
-  // Servings to log for generated recipes (separate from the AI recipe serving size)
+  // Serving size selectors
   const [generatedServingsToLog, setGeneratedServingsToLog] = useState(1);
   const [fridgeServingsToLog, setFridgeServingsToLog] = useState(1);
-
-  // Optimistic free generations counter to prevent double-spend before Firestore sync
-  const [optimisticFreeLeft, setOptimisticFreeLeft] = useState<number | null>(null);
-
-  // Get free generations from userProfile (persisted in Firestore)
-  const currentMonth = getCurrentMonth();
-  const storedMonth = userProfile?.freeGenerationsMonth;
-  const monthlyFreeGenerationsUsed = storedMonth === currentMonth ? (userProfile?.freeGenerationsUsedThisMonth ?? 0) : 0;
-  const baseFreeLeft = MAX_FREE_GENERATIONS - monthlyFreeGenerationsUsed;
-  
-  // Use optimistic value if set, otherwise fall back to Firestore value
-  const freeGenerationsLeft = optimisticFreeLeft !== null ? optimisticFreeLeft : baseFreeLeft;
-  const canUseFeature = isPremium || trialDaysRemaining > 0 || freeGenerationsLeft > 0;
-
-  const handleGenerationInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setGenerationFormState(prev => ({ ...prev, [name]: value }));
-  };
-  const handleGenerationSelectChange = (name: keyof GenerateDetailedRecipeInput) => (value: string) => {
-    setGenerationFormState(prev => ({ ...prev, [name]: value }));
-  };
-  const handleGenerationNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setGenerationFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
-  };
-    const handleGenerationCheckboxChange = (name: keyof GenerateDetailedRecipeInput) => (checked: boolean) => {
-    setGenerationFormState(prev => ({ ...prev, [name]: checked }));
-  };
-
-  const handleAdaptationInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setAdaptationFormState(prev => ({ ...prev, [name]: value }));
-  };
-  const handleAdaptationSelectChange = (name: keyof AdaptRecipeInput) => (value: string) => {
-    setAdaptationFormState(prev => ({ ...prev, [name]: value as AdaptationGoalValue }));
-  };
-    const handleAdaptationNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setAdaptationFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
-  };
-
-  const handleFromIngredientsInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFromIngredientsFormState(prev => ({ ...prev, [name]: value }));
-  };
-  const handleFromIngredientsSelectChange = (name: keyof GenerateRecipeFromIngredientsInput) => (value: string) => {
-    setFromIngredientsFormState(prev => ({ ...prev, [name]: value }));
-  };
-  const handleFromIngredientsNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFromIngredientsFormState(prev => ({ ...prev, [name]: parseInt(value, 10) || undefined }));
-  };
-
-  // Reset optimistic counter when Firestore profile updates (confirms server value)
-  useEffect(() => {
-    // onSnapshot delivers a new userProfile object each time — use this to
-    // detect when Firestore has confirmed the server-side generation count
-    setOptimisticFreeLeft(null);
-  }, [userProfile]);
 
   // Reset servings to log when a new recipe is generated
   useEffect(() => {
@@ -452,235 +144,8 @@ export default function RecipeGeneratorPage() {
     setFridgeServingsToLog(1);
   }, [generatedRecipe, fromIngredientsRecipe]);
 
-  const incrementUsageAndCheckLimit = async (): Promise<boolean> => {
-    if (isPremium || trialDaysRemaining > 0) return true;
-    if (!user) {
-      toast({ title: "Login Required", description: "Please log in to use Recipe Genie.", variant: "destructive" });
-      return false;
-    }
-
-    // Optimistic decrement: immediately update local UI to prevent double-spend
-    setOptimisticFreeLeft(prev => {
-      const current = prev !== null ? prev : baseFreeLeft;
-      const next = current - 1;
-      return next;
-    });
-
-    try {
-      await incrementFreeGenerationsUsedForUser(user.uid);
-      return true;
-    } catch (error: any) {
-      // Revert optimistic decrement on failure
-      setOptimisticFreeLeft(null);
-      toast({
-        title: "Limit Reached",
-        description: error.message || "Could not update your free generation allowance. Please try again.",
-        variant: "destructive",
-      });
-      return false;
-    }
-  };
-
-  const handleGenerateRecipe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
-      toast({ title: "Limit Reached", description: "You've used all your free generations. Upgrade to Premium or start a trial for unlimited access!", variant: "destructive" });
-      return;
-    }
-    if (!(await incrementUsageAndCheckLimit())) return;
-
-    setIsLoadingGeneration(true);
-    setGenerationError(null);
-    setGeneratedRecipe(null);
-
-    const inputForAI: GenerateDetailedRecipeInput = {
-      dietaryPreference: generationFormState.dietaryPreference || "Keto",
-      cuisinePreference: generationFormState.cuisinePreference || "Any",
-      mealType: generationFormState.mealType || "Any",
-      mainIngredients: mainIngredients.split(',').map(s => s.trim()).filter(Boolean),
-      excludedIngredients: excludedIngredients.split(',').map(s => s.trim()).filter(Boolean),
-      cookingTimePreference: generationFormState.cookingTimePreference || "No Preference",
-      servings: generationFormState.servings || 2,
-      specificRequests: generationFormState.specificRequests,
-      ensureHalal: generationFormState.ensureHalal || false,
-      spiceLevel: generationFormState.spiceLevel || "Any",
-    };
-
-    try {
-      const recipe = await generateDetailedRecipe(inputForAI);
-      setGeneratedRecipe(recipe);
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to generate recipe. Chef Ath might be busy. Please try again.";
-      setGenerationError(errorMessage);
-      toast({ title: 'Recipe Generation Failed', description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsLoadingGeneration(false);
-    }
-  };
-
-  const handleLogRecipe = async (recipeToLog: GenerateDetailedRecipeOutput | null, servingsToLog: number, source: 'generate' | 'fridge') => {
-    if (!user) {
-      toast({ title: "Login Required", description: "Please log in to save this meal to your food log.", variant: "destructive" });
-      return;
-    }
-    if (!recipeToLog) {
-      toast({ title: "No Recipe", description: "Please generate a recipe first.", variant: "destructive" });
-      return;
-    }
-
-    if (source === 'generate') setIsLoggingGeneratedRecipe(true);
-    if (source === 'fridge') setIsLoggingFromIngredientsRecipe(true);
-
-    try {
-      // Scale macros proportionally to servings being logged
-      const scale = servingsToLog / recipeToLog.servings;
-      const foodLogEntry: Omit<FoodLog, 'id' | 'userId'> = {
-        foodItem: recipeToLog.recipeName,
-        quantity: `${servingsToLog} of ${recipeToLog.servings} servings`,
-        calories: Math.round(recipeToLog.macrosPerServing.calories * scale),
-        protein: Math.round(recipeToLog.macrosPerServing.protein * scale * 10) / 10,
-        carbs: Math.round(recipeToLog.macrosPerServing.carbs * scale * 10) / 10,
-        fat: Math.round(recipeToLog.macrosPerServing.fat * scale * 10) / 10,
-        loggedAt: serverTimestamp() as any as Timestamp,
-      };
-
-      const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
-      await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
-      toast({ title: "Meal Logged!", description: `${recipeToLog.recipeName} (${servingsToLog} serving${servingsToLog !== 1 ? 's' : ''}) added to your food log.` });
-    } catch (error: any) {
-      toast({ title: "Logging Failed", description: error.message || "Could not log this meal.", variant: "destructive" });
-    } finally {
-      if (source === 'generate') setIsLoggingGeneratedRecipe(false);
-      if (source === 'fridge') setIsLoggingFromIngredientsRecipe(false);
-    }
-  };
-
-  const handleLogAdaptedRecipe = async (macros: RecipeMacros, recipeName: string, servingsToLog: number) => {
-    if (!user) {
-      toast({ title: "Login Required", description: "Please log in to save this meal.", variant: "destructive" });
-      return;
-    }
-    setIsLoggingAdaptedRecipe(true);
-    try {
-      const foodLogEntry: Omit<FoodLog, 'id' | 'userId'> = {
-        foodItem: recipeName,
-        quantity: `${servingsToLog} serving(s)`,
-        calories: macros.calories,
-        protein: macros.protein,
-        carbs: macros.carbs,
-        fat: macros.fat,
-        loggedAt: serverTimestamp() as any as Timestamp,
-      };
-      const foodLogWithUser: Omit<FoodLog, 'id'> = { ...foodLogEntry, userId: user.uid };
-      await addDoc(collection(db, 'users', user.uid, 'foodLogs'), foodLogWithUser);
-      toast({ title: "Meal Logged!", description: `${recipeName} (${servingsToLog} serving${servingsToLog !== 1 ? 's' : ''}) added to your food log.` });
-    } catch (error: any) {
-      toast({ title: "Logging Failed", description: error.message || "Could not log this adapted meal.", variant: "destructive" });
-    } finally {
-      setIsLoggingAdaptedRecipe(false);
-    }
-  };
-
-
-  const handleAdaptRecipe = async (e: React.FormEvent) => {
-    e.preventDefault();
-      if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
-      toast({ title: "Limit Reached", description: "You've used all your free adaptations. Upgrade or start a trial!", variant: "destructive" });
-      return;
-    }
-    if (!(await incrementUsageAndCheckLimit())) return;
-
-    setIsLoadingAdaptation(true);
-    setAdaptationError(null);
-    setAdaptedRecipeOutput(null);
-
-    if (!originalRecipeText.trim()) {
-        setAdaptationError("Original recipe text cannot be empty.");
-        toast({ title: 'Input Error', description: "Please provide the original recipe text.", variant: 'destructive' });
-        setIsLoadingAdaptation(false);
-        return;
-    }
-
-    const inputForAI: AdaptRecipeInput = {
-        originalRecipeText,
-        adaptationGoal: adaptationFormState.adaptationGoal || "makeKeto",
-        specificIngredientToSubstitute: adaptationFormState.adaptationGoal === "suggestSubstitutions" ? specificIngredientToSubstitute : undefined,
-        preferredSubstitution: preferredSubstitution || undefined,
-        dietaryRestrictions: additionalDietaryRestrictions.split(',').map(s => s.trim()).filter(Boolean),
-        servings: adaptationFormState.servings || 2,
-    };
-
-    try {
-      const result = await adaptRecipe(inputForAI);
-      setAdaptedRecipeOutput(result);
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to adapt recipe. Chef Ath might be stumped. Please check the recipe and try again.";
-      setAdaptationError(errorMessage);
-      toast({ title: 'Recipe Adaptation Failed', description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsLoadingAdaptation(false);
-    }
-  };
-
-  const handleGenerateFromIngredients = async (e: React.FormEvent) => {
-    e.preventDefault();
-      if (!canUseFeature && !isPremium && trialDaysRemaining <= 0) {
-      toast({ title: "Limit Reached", description: "You've used all your free 'Fridge' generations. Upgrade or start a trial!", variant: "destructive" });
-      return;
-    }
-    if (!(await incrementUsageAndCheckLimit())) return;
-
-    setIsLoadingFromIngredients(true);
-    setFromIngredientsError(null);
-    setFromIngredientsRecipe(null);
-
-    if (!availableFridgeIngredients.trim()) {
-        setFromIngredientsError("Please list some available ingredients.");
-        toast({ title: 'Input Error', description: "Please provide at least one ingredient you have.", variant: 'destructive' });
-        setIsLoadingFromIngredients(false);
-        return;
-    }
-
-    const inputForAI: GenerateRecipeFromIngredientsInput = {
-      availableIngredients: availableFridgeIngredients.split(',').map(s => s.trim()).filter(Boolean),
-      dietaryPreference: fromIngredientsFormState.dietaryPreference || "Keto",
-      cuisinePreference: fromIngredientsFormState.cuisinePreference || "Any",
-      mealType: fromIngredientsFormState.mealType || "Any",
-      servings: fromIngredientsFormState.servings || 2,
-      specificRequests: fromIngredientsFormState.specificRequests,
-      excludedIngredients: excludedFridgeIngredients.split(',').map(s => s.trim()).filter(Boolean),
-    };
-
-    if (inputForAI.availableIngredients.length === 0) {
-        setFromIngredientsError("Please list some available ingredients.");
-        toast({ title: 'Input Error', description: "Available ingredients list cannot be empty after parsing.", variant: 'destructive' });
-        setIsLoadingFromIngredients(false);
-        return;
-    }
-
-    try {
-      const recipe = await generateRecipeFromIngredients(inputForAI);
-      setFromIngredientsRecipe(recipe);
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to generate recipe from your ingredients. Chef Ath might be busy. Please try again.";
-      setFromIngredientsError(errorMessage);
-      toast({ title: 'Recipe Generation Failed', description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsLoadingFromIngredients(false);
-    }
-  };
-
-  const startTrial = () => {
-    setTrialDaysRemaining(3);
-    setTrialAvailable(false);
-    toast({ title: "Premium Trial Started!", description: "Enjoy full access to Recipe Genie for 3 days." });
-  };
-
-  const currentActiveTabDefault = "generate";
-  const isLoadingAnyFeature = isLoadingGeneration || isLoadingAdaptation || isLoadingFromIngredients;
-
   if (authLoading) {
-      return (
+    return (
       <AppLayout>
         <div className="container mx-auto py-8 px-4 flex justify-center items-center h-[calc(100vh-150px)]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -692,8 +157,8 @@ export default function RecipeGeneratorPage() {
   const renderFreemiumHeader = () => {
     if (isPremium) {
       return (
-        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-green-50 border-green-300 text-green-700">
-          <Gem className="h-5 w-5 text-green-600" />
+        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-green-500/10 border-green-500/20 text-green-500">
+          <Gem className="h-5 w-5 text-green-500 animate-pulse" />
           <AlertTitle className="font-semibold">Premium Access Active!</AlertTitle>
           <AlertDescription>You have unlimited access to all Recipe Genie features. Enjoy!</AlertDescription>
         </Alert>
@@ -701,8 +166,8 @@ export default function RecipeGeneratorPage() {
     }
     if (trialDaysRemaining > 0) {
       return (
-        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-blue-50 border-blue-300 text-blue-700">
-          <Zap className="h-5 w-5 text-blue-600" />
+        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-blue-500/10 border-blue-500/20 text-blue-500">
+          <Zap className="h-5 w-5 text-blue-500" />
           <AlertTitle className="font-semibold">Premium Trial Active: {trialDaysRemaining} days remaining!</AlertTitle>
           <AlertDescription>Enjoy full access to the Recipe Genie during your trial.</AlertDescription>
         </Alert>
@@ -710,8 +175,8 @@ export default function RecipeGeneratorPage() {
     }
     if (freeGenerationsLeft > 0) {
       return (
-        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-orange-50 border-orange-300 text-orange-700">
-          <Info className="h-5 w-5 text-orange-600" />
+        <Alert variant="default" className="mb-6 max-w-3xl mx-auto bg-orange-500/10 border-orange-500/20 text-orange-500">
+          <Info className="h-5 w-5 text-orange-500" />
           <AlertTitle className="font-semibold">Recipe Genie - Free Tier</AlertTitle>
           <AlertDescription>You have {freeGenerationsLeft} free AI recipe generations left this month. Upgrade for unlimited access!</AlertDescription>
         </Alert>
@@ -720,6 +185,7 @@ export default function RecipeGeneratorPage() {
     return null;
   };
 
+  const isLoadingAnyFeature = isLoadingGeneration || isLoadingAdaptation || isLoadingFromIngredients;
 
   return (
     <AppLayout>
@@ -729,372 +195,155 @@ export default function RecipeGeneratorPage() {
           initial="hidden"
           animate="visible"
         >
-            <motion.div variants={itemVariants}>
-                {renderFreemiumHeader()}
-            </motion.div>
+          <motion.div variants={itemVariants}>
+            {renderFreemiumHeader()}
+          </motion.div>
 
-            {!canUseFeature && !isPremium && trialDaysRemaining <= 0 && (
-                <motion.div variants={itemVariants} className="max-w-3xl mx-auto mb-6">
-                    <UpgradePrompt
-                        featureName="Recipe Genie"
-                        message="You've used all your free AI recipe generations. Upgrade to Premium for unlimited access, or start a free trial!"
-                    />
-                    {trialAvailable && (
-                        <Button onClick={startTrial} size="lg" className="w-full mt-4">
-                            <Sparkles className="mr-2 h-5 w-5" /> Start 3-Day Free Trial
-                        </Button>
-                    )}
-                </motion.div>
+          {!canUseFeature && !isPremium && trialDaysRemaining <= 0 && (
+            <motion.div variants={itemVariants} className="max-w-3xl mx-auto mb-6">
+              <UpgradePrompt
+                featureName="Recipe Genie"
+                message="You've used all your free AI recipe generations. Upgrade to Premium for unlimited access, or start a free trial!"
+              />
+              {trialAvailable && (
+                <Button 
+                  onClick={startTrial} 
+                  size="lg" 
+                  className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-headline tracking-wide h-12 shadow-lg shadow-primary/20"
+                  disabled={isStartingTrial}
+                >
+                  {isStartingTrial ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                  Start 3-Day Free Trial
+                </Button>
+              )}
+            </motion.div>
+          )}
+
+          <motion.div variants={itemVariants}>
+            <Tabs defaultValue="generate" className="max-w-3xl mx-auto mt-6">
+              <TabsList className="flex flex-wrap w-full h-auto sm:h-12 gap-1 mb-6 p-1 rounded-xl bg-muted/60 text-muted-foreground border border-border/30">
+                <TabsTrigger value="generate" className="flex-1 min-w-[150px] sm:flex-auto rounded-lg">
+                  <CopyCheck className="hidden sm:inline-block mr-2 h-5 w-5" />Generate New
+                </TabsTrigger>
+                <TabsTrigger value="fridge" className="flex-1 min-w-[150px] sm:flex-auto rounded-lg">
+                  <Refrigerator className="hidden sm:inline-block mr-2 h-5 w-5" />What's In My Fridge?
+                </TabsTrigger>
+                <TabsTrigger value="adapt" className="flex-1 min-w-[150px] sm:flex-auto rounded-lg">
+                  <GitFork className="hidden sm:inline-block mr-2 h-5 w-5" />Adapt Existing
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="generate">
+                <GenerateRecipeForm
+                  isLoading={isLoadingGeneration}
+                  authLoading={authLoading}
+                  canUseFeature={canUseFeature}
+                  onGenerate={generateRecipe}
+                />
+              </TabsContent>
+
+              <TabsContent value="fridge">
+                <FridgeRecipeForm
+                  isLoading={isLoadingFromIngredients}
+                  authLoading={authLoading}
+                  canUseFeature={canUseFeature}
+                  onGenerate={generateFromIngredients}
+                />
+              </TabsContent>
+
+              <TabsContent value="adapt">
+                <AdaptRecipeForm
+                  isLoading={isLoadingAdaptation}
+                  authLoading={authLoading}
+                  canUseFeature={canUseFeature}
+                  onAdapt={adaptRecipe}
+                />
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+
+          <AnimatePresence>
+            {/* Detailed Generation Display */}
+            {isLoadingGeneration && (
+              <motion.div key="gen-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <RecipeGeneratorSkeleton />
+              </motion.div>
+            )}
+            {generationError && !isLoadingGeneration && (
+              <motion.div key="gen-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <Alert variant="destructive" className="mt-8 bg-destructive/10 border-destructive/20 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertTitle>Oops! Something went wrong with generation.</AlertTitle>
+                  <AlertDescription>{generationError}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+            {generatedRecipe && !isLoadingGeneration && (
+              <motion.div key="gen-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <GeneratedRecipeDisplay
+                  recipe={generatedRecipe}
+                  servingsToLog={generatedServingsToLog}
+                  onServingsChange={setGeneratedServingsToLog}
+                  onLogRecipe={(recipe, servings) => logRecipe(recipe, servings, 'generate')}
+                  isLoggingRecipe={isLoggingGeneratedRecipe}
+                  recipeSource="generate"
+                />
+              </motion.div>
             )}
 
-            <motion.div variants={itemVariants}>
-                <Tabs defaultValue={currentActiveTabDefault} className="max-w-3xl mx-auto mt-6">
-                <TabsList className="flex flex-wrap w-full h-auto sm:h-10 gap-1 mb-6 p-1 rounded-md bg-muted text-muted-foreground">
-                    <TabsTrigger value="generate" className="flex-1 min-w-[150px] sm:flex-auto">
-                        <CopyCheck className="hidden sm:inline-block mr-2 h-5 w-5" />Generate New
-                    </TabsTrigger>
-                    <TabsTrigger value="fridge" className="flex-1 min-w-[150px] sm:flex-auto">
-                        <Refrigerator className="hidden sm:inline-block mr-2 h-5 w-5" />What's In My Fridge?
-                    </TabsTrigger>
-                    <TabsTrigger value="adapt" className="flex-1 min-w-[150px] sm:flex-auto">
-                        <GitFork className="hidden sm:inline-block mr-2 h-5 w-5" />Adapt Existing
-                    </TabsTrigger>
-                </TabsList>
+            {/* Fridge Generation Display */}
+            {isLoadingFromIngredients && (
+              <motion.div key="fridge-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <RecipeGeneratorSkeleton />
+              </motion.div>
+            )}
+            {fromIngredientsError && !isLoadingFromIngredients && (
+              <motion.div key="fridge-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <Alert variant="destructive" className="mt-8 bg-destructive/10 border-destructive/20 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertTitle>Oops! Something went wrong with this generation.</AlertTitle>
+                  <AlertDescription>{fromIngredientsError}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+            {fromIngredientsRecipe && !isLoadingFromIngredients && (
+              <motion.div key="fridge-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <GeneratedRecipeDisplay
+                  recipe={fromIngredientsRecipe}
+                  servingsToLog={fridgeServingsToLog}
+                  onServingsChange={setFridgeServingsToLog}
+                  onLogRecipe={(recipe, servings) => logRecipe(recipe, servings, 'fridge')}
+                  isLoggingRecipe={isLoggingFromIngredientsRecipe}
+                  recipeSource="fridge"
+                />
+              </motion.div>
+            )}
 
-                <TabsContent value="generate">
-                    <Card className="shadow-xl">
-                    <CardHeader className="text-center">
-                        <Utensils className="mx-auto h-12 w-12 text-primary mb-2" />
-                        <CardTitle className="text-3xl font-headline text-primary">Chef Ath's Recipe Genie</CardTitle>
-                        <CardDescription>
-                            Tell Chef Ath your preferences, and get a custom Keto-focused recipe!
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleGenerateRecipe} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="dietaryPreference">Dietary Preference</Label>
-                                <Select name="dietaryPreference" value={generationFormState.dietaryPreference} onValueChange={handleGenerationSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
-                                <SelectTrigger id="dietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
-                                <SelectContent>
-                                    {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="cuisinePreference">Cuisine Preference</Label>
-                                <Input id="cuisinePreference" name="cuisinePreference" placeholder="e.g., Italian, Singaporean Local, Any" value={generationFormState.cuisinePreference || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="mealType">Meal Type</Label>
-                                <Select name="mealType" value={generationFormState.mealType} onValueChange={handleGenerationSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
-                                <SelectTrigger id="mealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
-                                <SelectContent>
-                                    {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="cookingTimePreference">Cooking Time</Label>
-                                <Select name="cookingTimePreference" value={generationFormState.cookingTimePreference} onValueChange={handleGenerationSelectChange('cookingTimePreference')} disabled={isLoadingAnyFeature || authLoading}>
-                                <SelectTrigger id="cookingTimePreference"><SelectValue placeholder="Select cooking time" /></SelectTrigger>
-                                <SelectContent>
-                                    {cookingTimes.map(ct => <SelectItem key={ct} value={ct}>{ct}</SelectItem>)}
-                                </SelectContent>
-                                </Select>
-                            </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="mainIngredients">Main Ingredients to Feature (comma-separated, optional)</Label>
-                                <Input id="mainIngredients" name="mainIngredients" placeholder="e.g., chicken breast, broccoli, eggs" value={mainIngredients} onChange={(e) => setMainIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="excludedIngredients">Ingredients to Exclude (comma-separated, optional)</Label>
-                                <Input id="excludedIngredients" name="excludedIngredients" placeholder="e.g., nuts, mushrooms" value={excludedIngredients} onChange={(e) => setExcludedIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="spiceLevel" className="flex items-center">
-                                        <Flame className="mr-2 h-4 w-4 text-muted-foreground" />
-                                        Spice Level
-                                    </Label>
-                                    <Select name="spiceLevel" value={generationFormState.spiceLevel} onValueChange={handleGenerationSelectChange('spiceLevel')} disabled={isLoadingAnyFeature || authLoading}>
-                                        <SelectTrigger id="spiceLevel"><SelectValue placeholder="Select spice level" /></SelectTrigger>
-                                        <SelectContent>
-                                        {spiceLevels.map(sl => <SelectItem key={sl} value={sl}>{sl}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="servings">Number of Servings (for AI to generate)</Label>
-                                    <Input id="servings" name="servings" type="number" min="1" max="12" value={generationFormState.servings || ''} onChange={handleGenerationNumberInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                                    <p className="text-xs text-muted-foreground">This controls the recipe serving size. Use the stepper below the recipe to log a different amount.</p>
-                                </div>
-                                </div>
-                            <div className="space-y-2 flex items-center">
-                                <Checkbox
-                                    id="ensureHalal"
-                                    checked={generationFormState.ensureHalal}
-                                    onCheckedChange={(checked) => handleGenerationCheckboxChange('ensureHalal')(!!checked)}
-                                    disabled={isLoadingAnyFeature || authLoading}
-                                />
-                                <Label htmlFor="ensureHalal" className="ml-2 font-normal flex items-center cursor-pointer">
-                                    <ShieldCheck className="mr-1.5 h-4 w-4 text-muted-foreground" />
-                                    Ensure Halal Compliance
-                                </Label>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="specificRequests">Other Specific Requests / Notes</Label>
-                                <Textarea id="specificRequests" name="specificRequests" placeholder="e.g., one-pan meal, air fryer friendly, make it Halal, use local herbs" value={generationFormState.specificRequests || ''} onChange={handleGenerationInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                                {isLoadingGeneration ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                                {isLoadingGeneration ? 'Chef Ath is Thinking...' : 'Generate My Recipe!'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="fridge">
-                    <Card className="shadow-xl">
-                    <CardHeader className="text-center">
-                        <Refrigerator className="mx-auto h-12 w-12 text-primary mb-2" />
-                        <CardTitle className="text-3xl font-headline text-primary">What's In My Fridge?</CardTitle>
-                        <CardDescription>
-                            List your available ingredients, and Chef Ath will whip up a Keto recipe!
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleGenerateFromIngredients} className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="availableFridgeIngredients">Available Ingredients (comma-separated)</Label>
-                                <Textarea
-                                    id="availableFridgeIngredients"
-                                    name="availableFridgeIngredients"
-                                    placeholder="e.g., chicken thighs, spinach, eggs, cheese, olive oil"
-                                    value={availableFridgeIngredients}
-                                    onChange={(e) => setAvailableFridgeIngredients(e.target.value)}
-                                    rows={4}
-                                    disabled={isLoadingAnyFeature || authLoading}
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                <Label htmlFor="fridgeDietaryPreference">Dietary Preference</Label>
-                                <Select name="dietaryPreference" value={fromIngredientsFormState.dietaryPreference} onValueChange={handleFromIngredientsSelectChange('dietaryPreference')} disabled={isLoadingAnyFeature || authLoading}>
-                                    <SelectTrigger id="fridgeDietaryPreference"><SelectValue placeholder="Select diet" /></SelectTrigger>
-                                    <SelectContent>
-                                    {dietaryPreferences.map(dp => <SelectItem key={dp} value={dp}>{dp}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                </div>
-                                <div className="space-y-2">
-                                <Label htmlFor="fridgeCuisinePreference">Cuisine Preference</Label>
-                                <Input id="fridgeCuisinePreference" name="cuisinePreference" placeholder="e.g., Quick & Easy, Asian, Any" value={fromIngredientsFormState.cuisinePreference || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                <Label htmlFor="fridgeMealType">Meal Type</Label>
-                                <Select name="mealType" value={fromIngredientsFormState.mealType} onValueChange={handleFromIngredientsSelectChange('mealType')} disabled={isLoadingAnyFeature || authLoading}>
-                                    <SelectTrigger id="fridgeMealType"><SelectValue placeholder="Select meal type" /></SelectTrigger>
-                                    <SelectContent>
-                                    {mealTypes.map(mt => <SelectItem key={mt} value={mt}>{mt}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                                </div>
-                                <div className="space-y-2">
-                                <Label htmlFor="fridgeServings">Number of Servings (for AI to generate)</Label>
-                                <Input id="fridgeServings" name="servings" type="number" min="1" max="12" value={fromIngredientsFormState.servings || ''} onChange={handleFromIngredientsNumberInputChange} disabled={isLoadingAnyFeature || authLoading}/>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="excludedFridgeIngredients">Ingredients to Strictly Exclude (comma-separated, optional)</Label>
-                                <Input id="excludedFridgeIngredients" name="excludedFridgeIngredients" placeholder="e.g., nuts, mushrooms, dairy" value={excludedFridgeIngredients} onChange={(e) => setExcludedFridgeIngredients(e.target.value)} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="fridgeSpecificRequests">Other Specific Requests / Notes</Label>
-                                <Textarea id="fridgeSpecificRequests" name="specificRequests" placeholder="e.g., quick meal, spicy, use air fryer" value={fromIngredientsFormState.specificRequests || ''} onChange={handleFromIngredientsInputChange} disabled={isLoadingAnyFeature || authLoading} />
-                            </div>
-                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                                {isLoadingFromIngredients ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                                {isLoadingFromIngredients ? 'Chef Ath is Inventing...' : 'Generate Recipe From My Ingredients!'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="adapt">
-                    <Card className="shadow-xl">
-                    <CardHeader className="text-center">
-                        <GitFork className="mx-auto h-12 w-12 text-secondary mb-2" />
-                        <CardTitle className="text-3xl font-headline text-secondary">Adapt Existing Recipe</CardTitle>
-                        <CardDescription>
-                            Have a recipe? Let Chef Ath adapt it for your needs (Keto, Halal, etc.) or suggest substitutions!
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleAdaptRecipe} className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="originalRecipeText">Original Recipe Text</Label>
-                                <Textarea
-                                    id="originalRecipeText"
-                                    name="originalRecipeText"
-                                    placeholder="Paste your full recipe here (ingredients and instructions)..."
-                                    value={originalRecipeText}
-                                    onChange={(e) => setOriginalRecipeText(e.target.value)}
-                                    rows={10}
-                                    disabled={isLoadingAnyFeature || authLoading}
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="adaptationGoal">Adaptation Goal</Label>
-                                    <Select
-                                        name="adaptationGoal"
-                                        value={adaptationFormState.adaptationGoal}
-                                        onValueChange={handleAdaptationSelectChange('adaptationGoal')}
-                                        disabled={isLoadingAnyFeature || authLoading}
-                                    >
-                                        <SelectTrigger id="adaptationGoal"><SelectValue placeholder="Select adaptation goal" /></SelectTrigger>
-                                        <SelectContent>
-                                        {adaptationGoals.map(goal => <SelectItem key={goal.value} value={goal.value}>{goal.label}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="adaptServings">Desired Servings (for adapted recipe)</Label>
-                                    <Input
-                                        id="adaptServings"
-                                        name="servings"
-                                        type="number"
-                                        min="1" max="12"
-                                        value={adaptationFormState.servings || ''}
-                                        onChange={handleAdaptationNumberInputChange}
-                                        disabled={isLoadingAnyFeature || authLoading}
-                                    />
-                                </div>
-                            </div>
-                            {adaptationFormState.adaptationGoal === "suggestSubstitutions" && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="specificIngredientToSubstitute">Ingredient to Substitute</Label>
-                                    <Input
-                                        id="specificIngredientToSubstitute"
-                                        name="specificIngredientToSubstitute"
-                                        placeholder="e.g., all-purpose flour, sugar"
-                                        value={specificIngredientToSubstitute}
-                                        onChange={(e) => setSpecificIngredientToSubstitute(e.target.value)}
-                                        disabled={isLoadingAnyFeature || authLoading}
-                                    />
-                                </div>
-                            )}
-                            <div className="space-y-2">
-                                <Label htmlFor="preferredSubstitution">Preferred Substitution (Optional)</Label>
-                                <Input
-                                    id="preferredSubstitution"
-                                    name="preferredSubstitution"
-                                    placeholder="e.g., almond flour, erythritol"
-                                    value={preferredSubstitution}
-                                    onChange={(e) => setPreferredSubstitution(e.target.value)}
-                                    disabled={isLoadingAnyFeature || authLoading}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="additionalDietaryRestrictions">Additional Dietary Restrictions (comma-separated, optional)</Label>
-                                <Input
-                                    id="additionalDietaryRestrictions"
-                                    name="additionalDietaryRestrictions"
-                                    placeholder="e.g., dairy-free, nut-free"
-                                    value={additionalDietaryRestrictions}
-                                    onChange={(e) => setAdditionalDietaryRestrictions(e.target.value)}
-                                    disabled={isLoadingAnyFeature || authLoading}
-                                />
-                            </div>
-                            <Button type="submit" className="w-full" disabled={isLoadingAnyFeature || authLoading || (!isPremium && trialDaysRemaining <=0 && freeGenerationsLeft <= 0)}>
-                                {isLoadingAdaptation ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                                {isLoadingAdaptation ? 'Chef Ath is Adapting...' : 'Adapt My Recipe!'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                    </Card>
-                </TabsContent>
-                </Tabs>
-            </motion.div>
-
-            <AnimatePresence>
-                {isLoadingGeneration && <motion.div key="gen-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeGeneratorSkeleton /></motion.div>}
-                {generationError && !isLoadingGeneration && (
-                    <motion.div key="gen-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <Alert variant="destructive" className="mt-8">
-                            <AlertCircle className="h-5 w-5" />
-                            <AlertTitle>Oops! Something went wrong with generation.</AlertTitle>
-                            <AlertDescription>{generationError}</AlertDescription>
-                        </Alert>
-                    </motion.div>
-                )}
-                {generatedRecipe && !isLoadingGeneration && (
-                    <motion.div key="gen-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <GeneratedRecipeDisplay
-                            recipe={generatedRecipe}
-                            servingsToLog={generatedServingsToLog}
-                            onServingsChange={setGeneratedServingsToLog}
-                            onLogRecipe={(recipe, servings) => handleLogRecipe(recipe, servings, 'generate')}
-                            isLoggingRecipe={isLoggingGeneratedRecipe}
-                            recipeSource="generate"
-                        />
-                    </motion.div>
-                )}
-
-                {isLoadingFromIngredients && <motion.div key="fridge-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeGeneratorSkeleton /></motion.div>}
-                {fromIngredientsError && !isLoadingFromIngredients && (
-                    <motion.div key="fridge-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <Alert variant="destructive" className="mt-8">
-                            <AlertCircle className="h-5 w-5" />
-                            <AlertTitle>Oops! Something went wrong with this generation.</AlertTitle>
-                            <AlertDescription>{fromIngredientsError}</AlertDescription>
-                        </Alert>
-                    </motion.div>
-                )}
-                {fromIngredientsRecipe && !isLoadingFromIngredients && (
-                    <motion.div key="fridge-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <GeneratedRecipeDisplay
-                            recipe={fromIngredientsRecipe}
-                            servingsToLog={fridgeServingsToLog}
-                            onServingsChange={setFridgeServingsToLog}
-                            onLogRecipe={(recipe, servings) => handleLogRecipe(recipe, servings, 'fridge')}
-                            isLoggingRecipe={isLoggingFromIngredientsRecipe}
-                            recipeSource="fridge"
-                        />
-                    </motion.div>
-                )}
-
-                {isLoadingAdaptation && <motion.div key="adapt-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden"><RecipeAdaptationSkeleton /></motion.div>}
-                {adaptationError && !isLoadingAdaptation && (
-                    <motion.div key="adapt-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <Alert variant="destructive" className="mt-8">
-                            <AlertCircle className="h-5 w-5" />
-                            <AlertTitle>Oops! Something went wrong with adaptation.</AlertTitle>
-                            <AlertDescription>{adaptationError}</AlertDescription>
-                        </Alert>
-                    </motion.div>
-                )}
-                {adaptedRecipeOutput && !isLoadingAdaptation && (
-                    <motion.div key="adapt-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden">
-                        <AdaptedRecipeDisplay
-                            adaptedRecipe={adaptedRecipeOutput}
-                            onLogAdaptedRecipe={handleLogAdaptedRecipe}
-                            isLoggingAdaptedRecipe={isLoggingAdaptedRecipe}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Adaptation Display */}
+            {isLoadingAdaptation && (
+              <motion.div key="adapt-skeleton" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <RecipeAdaptationSkeleton />
+              </motion.div>
+            )}
+            {adaptationError && !isLoadingAdaptation && (
+              <motion.div key="adapt-error" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <Alert variant="destructive" className="mt-8 bg-destructive/10 border-destructive/20 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertTitle>Oops! Something went wrong with adaptation.</AlertTitle>
+                  <AlertDescription>{adaptationError}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+            {adaptedRecipeOutput && !isLoadingAdaptation && (
+              <motion.div key="adapt-recipe" variants={itemVariants} initial="hidden" animate="visible" exit="hidden" className="max-w-3xl mx-auto">
+                <AdaptedRecipeDisplay
+                  adaptedRecipe={adaptedRecipeOutput}
+                  onLogAdaptedRecipe={logAdaptedRecipe}
+                  isLoggingAdaptedRecipe={isLoggingAdaptedRecipe}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </AppLayout>

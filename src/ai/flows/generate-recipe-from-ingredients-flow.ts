@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Generates detailed Keto recipes primarily based on a list of available ingredients.
  *

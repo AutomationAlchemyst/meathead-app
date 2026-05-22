@@ -1,5 +1,4 @@
 
-'use server';
 /**
  * @fileOverview Generates a Keto-friendly meal plan.
  *

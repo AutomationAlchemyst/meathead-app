@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview Estimates the total carbs, protein, fat, and calories for a given food item.
  *

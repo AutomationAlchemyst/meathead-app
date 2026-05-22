@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { generateDashboardInsights } from '@/ai/flows/generate-dashboard-insights-flow';
+import { getDashboardInsightsAction } from '@/actions/dashboard';
 import { Sparkles, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import UpgradePrompt from '@/components/premium/UpgradePrompt';
@@ -37,7 +37,7 @@ interface SmartInsightsCardProps {
 }
 
 export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
-  const { userProfile, isPremium } = useAuth();
+  const { user, userProfile, isPremium } = useAuth();
   const [insight, setInsight] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
   useEffect(() => {
     // The insight generation now runs automatically.
     const handleGenerateInsights = async () => {
-      if (!userProfile) {
+      if (!userProfile || !user) {
         setIsLoading(false);
         return;
       }
@@ -71,9 +71,15 @@ export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
         const plainFoodLogs = foodLogs.map(log => convertTimestamps(log));
         const timeOfDay = getTimeOfDay();
 
-        // Call the new, more intelligent AI flow.
-        const result = await generateDashboardInsights(plainProfile, plainFoodLogs, timeOfDay);
-        setInsight(result);
+        // Call the server action instead of calling Genkit directly.
+        const idToken = await user.getIdToken();
+        const result = await getDashboardInsightsAction(idToken, plainProfile, plainFoodLogs, timeOfDay);
+        if ('error' in result && result.error) {
+          throw new Error(result.error);
+        }
+        if (result.success && result.insights) {
+          setInsight(result.insights);
+        }
       } catch (e: any) {
         console.error("Error generating smart insight:", e);
         setError("Couldn't get your insight right now. Let's focus on the plan.");
@@ -83,7 +89,7 @@ export const SmartInsightsCard = ({ foodLogs }: SmartInsightsCardProps) => {
     };
 
     handleGenerateInsights();
-  }, [userProfile, foodLogs, isPremium]);
+  }, [user, userProfile, foodLogs, isPremium]);
 
   return (
     <Card className="h-full flex flex-col relative overflow-hidden group bg-card/40 backdrop-blur-xl border-border/50">
